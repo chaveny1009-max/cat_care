@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>열매&이삭 데일리 케어 노트</title>
+    <title>환묘 데일리 케어 노트 (다묘용)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
@@ -16,19 +15,34 @@
     <header class="bg-amber-500 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold">🐾 환묘 케어 노트</h1>
         <div class="flex items-center gap-2">
-            <button type="button" onclick="exportToCSV()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-2 py-1.5 rounded-lg shadow transition-colors">
+            <button type="button" onclick="exportToCSV()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition-colors">
                 📥 CSV 저장
             </button>
             <span id="currentDateDisplay" class="text-xs bg-amber-600 px-2 py-1.5 rounded"></span>
         </div>
     </header>
 
-    <div class="max-w-md mx-auto p-4 space-y-6">
+    <div class="max-w-md mx-auto p-4 space-y-5">
+
+        <!-- 고양이 선택 탭 -->
+        <section class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-2" id="catTabContainer">
+                <button type="button" onclick="switchCat('cat1')" id="tab-cat1" class="flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition-all border flex items-center justify-center gap-1">
+                    🐱 <span id="name-cat1">첫째</span>
+                </button>
+                <button type="button" onclick="switchCat('cat2')" id="tab-cat2" class="flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition-all border flex items-center justify-center gap-1">
+                    🐱 <span id="name-cat2">둘째</span>
+                </button>
+            </div>
+            <div class="mt-2 text-right">
+                <button type="button" onclick="editCatNames()" class="text-[11px] text-slate-400 hover:text-slate-600 underline">✏️ 고양이 이름 수정</button>
+            </div>
+        </section>
 
         <!-- 1. 오늘 케어 기록 입력 폼 -->
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-5">
             <div class="flex justify-between items-center border-b pb-3">
-                <h2 class="text-lg font-bold text-amber-600">📝 오늘의 일기</h2>
+                <h2 class="text-lg font-bold text-amber-600"><span id="formCatName">첫째</span>의 일기</h2>
                 <input type="date" id="logDate" onchange="loadLogForDate(this.value)" class="p-2 border rounded-xl bg-slate-50 text-sm font-semibold focus:outline-amber-500">
             </div>
 
@@ -53,7 +67,7 @@
                 </div>
             </div>
 
-            <!-- 음수량 입력 추가 -->
+            <!-- 음수량 입력 -->
             <div class="bg-cyan-50 p-3 rounded-xl border border-cyan-100 flex items-center justify-between">
                 <label class="text-sm font-bold text-cyan-800">💧 총 음수량 (ml)</label>
                 <input type="number" id="waterIntake" step="5" placeholder="예: 150" class="w-1/2 p-2 border rounded-lg bg-white text-sm font-bold text-right focus:outline-cyan-500">
@@ -108,7 +122,7 @@
 
         <!-- 2. 감자/맛동산 변화 추이 그래프 -->
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold mb-3 text-slate-700">📊 감자/맛동산 횟수 추이 (최근 7일)</h2>
+            <h2 class="text-lg font-bold mb-3 text-slate-700">📊 <span id="chartCatName">첫째</span>의 배변 추이 (최근 7일)</h2>
             <div class="h-52 relative">
                 <canvas id="toiletChart"></canvas>
             </div>
@@ -116,17 +130,70 @@
 
         <!-- 3. 최근 기록 리스트 -->
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold mb-3 text-slate-700">📋 저장된 일기 목록</h2>
+            <h2 class="text-lg font-bold mb-3 text-slate-700">📋 <span id="listCatName">첫째</span>의 저장된 일기</h2>
             <div id="logHistory" class="space-y-3 text-sm max-h-80 overflow-y-auto"></div>
         </section>
     </div>
 
     <script>
+        let currentCat = 'cat1';
         let currentPee = 0;
         let currentPoop = 0;
         let toiletChartInstance = null;
 
         const today = new Date().toISOString().split('T')[0];
+
+        // 고양이 이름 데이터 초기화/불러오기
+        function getCatNames() {
+            const saved = localStorage.getItem('catCareNames');
+            return saved ? JSON.parse(saved) : { cat1: '첫째', cat2: '둘째' };
+        }
+
+        function setCatNames(names) {
+            localStorage.setItem('catCareNames', JSON.stringify(names));
+            updateCatNameUI();
+        }
+
+        function updateCatNameUI() {
+            const names = getCatNames();
+            document.getElementById('name-cat1').innerText = names.cat1;
+            document.getElementById('name-cat2').innerText = names.cat2;
+            document.getElementById('formCatName').innerText = names[currentCat];
+            document.getElementById('chartCatName').innerText = names[currentCat];
+            document.getElementById('listCatName').innerText = names[currentCat];
+        }
+
+        function editCatNames() {
+            const names = getCatNames();
+            const cat1Name = prompt('첫째 고양이 이름을 입력하세요:', names.cat1);
+            if (cat1Name === null) return;
+            const cat2Name = prompt('둘째 고양이 이름을 입력하세요:', names.cat2);
+            if (cat2Name === null) return;
+
+            setCatNames({
+                cat1: cat1Name.trim() || '첫째',
+                cat2: cat2Name.trim() || '둘째'
+            });
+        }
+
+        function switchCat(catId) {
+            currentCat = catId;
+            
+            // 탭 스타일 변경
+            ['cat1', 'cat2'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                if (id === catId) {
+                    btn.className = 'flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition-all bg-amber-500 text-white border-amber-500 shadow-sm';
+                } else {
+                    btn.className = 'flex-1 py-2.5 px-3 rounded-xl font-bold text-sm transition-all bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100';
+                }
+            });
+
+            updateCatNameUI();
+            const date = document.getElementById('logDate').value || today;
+            loadLogForDate(date);
+            renderAll();
+        }
 
         function changeVal(type, val) {
             if (type === 'peeCount') {
@@ -178,6 +245,10 @@
             return data;
         }
 
+        function getStorageKey(catId = currentCat) {
+            return `catCareLogs_${catId}`;
+        }
+
         function saveLog() {
             const date = document.getElementById('logDate').value;
             if (!date) { alert('날짜를 선택하세요.'); return; }
@@ -198,22 +269,27 @@
                 memo: document.getElementById('memo').value
             };
 
-            let logs = JSON.parse(localStorage.getItem('catCareLogs') || '[]');
+            const key = getStorageKey();
+            let logs = JSON.parse(localStorage.getItem(key) || '[]');
             logs = logs.filter(item => item.date !== date);
             logs.push(entry);
             logs.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            localStorage.setItem('catCareLogs', JSON.stringify(logs));
-            alert('기록이 저장되었습니다!');
+            localStorage.setItem(key, JSON.stringify(logs));
+            const names = getCatNames();
+            alert(`${names[currentCat]}의 기록이 저장되었습니다!`);
 
             renderAll();
         }
 
         function deleteLog(targetDate) {
-            if (!confirm(`${targetDate} 기록을 삭제하시겠습니까?`)) return;
-            let logs = JSON.parse(localStorage.getItem('catCareLogs') || '[]');
+            const names = getCatNames();
+            if (!confirm(`${names[currentCat]}의 ${targetDate} 기록을 삭제하시겠습니까?`)) return;
+            
+            const key = getStorageKey();
+            let logs = JSON.parse(localStorage.getItem(key) || '[]');
             logs = logs.filter(item => item.date !== targetDate);
-            localStorage.setItem('catCareLogs', JSON.stringify(logs));
+            localStorage.setItem(key, JSON.stringify(logs));
             
             if (document.getElementById('logDate').value === targetDate) {
                 resetForm();
@@ -223,7 +299,8 @@
 
         function loadLogForDate(selectedDate) {
             resetForm(selectedDate);
-            const logs = JSON.parse(localStorage.getItem('catCareLogs') || '[]');
+            const key = getStorageKey();
+            const logs = JSON.parse(localStorage.getItem(key) || '[]');
             const log = logs.find(item => item.date === selectedDate);
 
             if (log) {
@@ -273,47 +350,58 @@
         }
 
         function exportToCSV() {
-            const logs = JSON.parse(localStorage.getItem('catCareLogs') || '[]');
-            if (logs.length === 0) {
+            const names = getCatNames();
+            const headers = ['고양이', '날짜', '감자(소변)', '맛동산(대변)', '음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
+            
+            let allRows = [];
+
+            ['cat1', 'cat2'].forEach(catId => {
+                const logs = JSON.parse(localStorage.getItem(getStorageKey(catId)) || '[]');
+                const catName = names[catId];
+
+                logs.forEach(log => {
+                    const foodStr = log.foods ? log.foods.map(f => `${f.type} ${f.amount}${f.time ? '(' + f.time + ')' : ''}`).join(' / ') : '';
+                    const snackStr = log.snacks ? log.snacks.map(s => `${s.type} ${s.amount}${s.time ? '(' + s.time + ')' : ''}`).join(' / ') : '';
+
+                    allRows.push([
+                        `"${catName}"`,
+                        log.date,
+                        log.pee,
+                        log.poop,
+                        log.water || 0,
+                        `"${foodStr.replace(/"/g, '""')}"`,
+                        `"${snackStr.replace(/"/g, '""')}"`,
+                        `"${(log.supplements || '').replace(/"/g, '""')}"`,
+                        log.weight || '',
+                        `"${(log.vitality || '').replace(/"/g, '""')}"`,
+                        `"${(log.memo || '').replace(/"/g, '""')}"`
+                    ]);
+                });
+            });
+
+            if (allRows.length === 0) {
                 alert('저장된 기록이 없습니다.');
                 return;
             }
 
-            const headers = ['날짜', '감자(소변)', '맛동산(대변)', '음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
-            
-            const rows = logs.map(log => {
-                const foodStr = log.foods ? log.foods.map(f => `${f.type} ${f.amount}${f.time ? '(' + f.time + ')' : ''}`).join(' / ') : '';
-                const snackStr = log.snacks ? log.snacks.map(s => `${s.type} ${s.amount}${s.time ? '(' + s.time + ')' : ''}`).join(' / ') : '';
+            // 날짜순 정렬
+            allRows.sort((a, b) => new Date(a[1]) - new Date(b[1]));
 
-                return [
-                    log.date,
-                    log.pee,
-                    log.poop,
-                    log.water || 0,
-                    `"${foodStr.replace(/"/g, '""')}"`,
-                    `"${snackStr.replace(/"/g, '""')}"`,
-                    `"${(log.supplements || '').replace(/"/g, '""')}"`,
-                    log.weight || '',
-                    `"${(log.vitality || '').replace(/"/g, '""')}"`,
-                    `"${(log.memo || '').replace(/"/g, '""')}"`
-                ];
-            });
-
-            // BOM 추가로 엑셀 한글 깨짐 방지
-            let csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            let csvContent = '\uFEFF' + [headers.join(','), ...allRows.map(e => e.join(','))].join('\n');
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            link.setAttribute('download', `환묘_케어_노트_${today}.csv`);
+            link.setAttribute('download', `환묘_통합_케어_노트_${today}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
         function renderAll() {
-            const logs = JSON.parse(localStorage.getItem('catCareLogs') || '[]');
+            const key = getStorageKey();
+            const logs = JSON.parse(localStorage.getItem(key) || '[]');
             const recentLogs = logs.slice(-7);
 
             const dates = recentLogs.map(l => l.date.slice(5));
@@ -377,9 +465,7 @@
         }
 
         window.onload = function() {
-            resetForm(today);
-            loadLogForDate(today);
-            renderAll();
+            switchCat('cat1');
         };
     </script>
 </body>
