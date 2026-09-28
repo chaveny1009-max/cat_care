@@ -135,12 +135,11 @@
         </section>
     </div>
 
-    <!-- Firebase SDK 모듈 로드 -->
+    <!-- 스크립트 영역 통합 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // 발급받으신 Firebase 실제 설정 정보 연동
         const firebaseConfig = {
             apiKey: "AIzaSyDPyDgOG6OsfTusf9AAiBv4r9Xjj1PPcEI",
             authDomain: "cat-care-note.firebaseapp.com",
@@ -153,25 +152,26 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 전역 객체 매핑
-        window.db = db;
-        window.firestoreDoc = doc;
-        window.firestoreSetDoc = setDoc;
-        window.firestoreDeleteDoc = deleteDoc;
+        // 상태 변수
+        window.currentCat = 'cat1';
+        window.currentPee = 0;
+        window.currentPoop = 0;
+        window.toiletChartInstance = null;
+        window.allCatLogs = { cat1: [], cat2: [] };
+        window.catNames = { cat1: '첫째', cat2: '둘째' };
+        window.today = new Date().toISOString().split('T')[0];
 
-        // 고양이 이름 및 전체 로그 데이터 수신 (실시간 리스너)
+        // 고양이 이름 실시간 수신
         onSnapshot(doc(db, "catCare", "settings"), (snapshot) => {
             if (snapshot.exists()) {
                 window.catNames = snapshot.data().names || { cat1: '첫째', cat2: '둘째' };
-            } else {
-                window.catNames = { cat1: '첫째', cat2: '둘째' };
             }
             updateCatNameUI();
         });
 
+        // 각 고양이 로그 실시간 수신 및 그래프 자동 갱신
         ['cat1', 'cat2'].forEach(catId => {
             onSnapshot(doc(db, "catCare", `logs_${catId}`), (snapshot) => {
-                window.allCatLogs = window.allCatLogs || {};
                 window.allCatLogs[catId] = snapshot.exists() ? (snapshot.data().list || []) : [];
                 if (window.currentCat === catId) {
                     renderAll();
@@ -180,51 +180,88 @@
                 }
             });
         });
-    </script>
 
-    <script>
-        let currentCat = 'cat1';
-        let currentPee = 0;
-        let currentPoop = 0;
-        let toiletChartInstance = null;
-        const today = new Date().toISOString().split('T')[0];
+        // 전역 함수 정의 (HTML 버튼 지원)
+        window.saveLog = async function() {
+            const date = document.getElementById('logDate').value;
+            if (!date) { alert('날짜를 선택하세요.'); return; }
 
+            const foods = getDynamicData('foodContainer', 'food-row', 'food');
+            const snacks = getDynamicData('snackContainer', 'snack-row', 'snack');
+
+            const entry = {
+                date,
+                pee: window.currentPee,
+                poop: window.currentPoop,
+                water: document.getElementById('waterIntake').value,
+                foods,
+                snacks,
+                supplements: document.getElementById('supplements').value,
+                weight: document.getElementById('weight').value,
+                vitality: document.getElementById('vitality').value,
+                memo: document.getElementById('memo').value
+            };
+
+            let logs = getCurrentLogs().filter(item => item.date !== date);
+            logs.push(entry);
+            logs.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            await setDoc(doc(db, "catCare", `logs_${window.currentCat}`), { list: logs });
+            const names = getCatNames();
+            alert(`${names[window.currentCat]}의 기록이 저장되었습니다!`);
+        };
+
+        window.deleteLog = async function(targetDate) {
+            const names = getCatNames();
+            if (!confirm(`${names[window.currentCat]}의 ${targetDate} 기록을 삭제하시겠습니까?`)) return;
+            
+            let logs = getCurrentLogs().filter(item => item.date !== targetDate);
+            await setDoc(doc(db, "catCare", `logs_${window.currentCat}`), { list: logs });
+            
+            if (document.getElementById('logDate').value === targetDate) {
+                resetForm();
+            }
+        };
+
+        window.setCatNames = async function(names) {
+            window.catNames = names;
+            updateCatNameUI();
+            await setDoc(doc(db, "catCare", "settings"), { names }, { merge: true });
+        };
+
+        // 헬퍼 및 UI 함수들
         function getCatNames() {
             return window.catNames || { cat1: '첫째', cat2: '둘째' };
         }
 
-        async function setCatNames(names) {
-            window.catNames = names;
-            updateCatNameUI();
-            if (window.db) {
-                await window.firestoreSetDoc(window.firestoreDoc(window.db, "catCare", "settings"), { names }, { merge: true });
-            }
+        function getCurrentLogs() {
+            return window.allCatLogs[window.currentCat] || [];
         }
 
-        function updateCatNameUI() {
+        window.updateCatNameUI = function() {
             const names = getCatNames();
             document.getElementById('name-cat1').innerText = names.cat1;
             document.getElementById('name-cat2').innerText = names.cat2;
-            document.getElementById('formCatName').innerText = names[currentCat];
-            document.getElementById('chartCatName').innerText = names[currentCat];
-            document.getElementById('listCatName').innerText = names[currentCat];
-        }
+            document.getElementById('formCatName').innerText = names[window.currentCat];
+            document.getElementById('chartCatName').innerText = names[window.currentCat];
+            document.getElementById('listCatName').innerText = names[window.currentCat];
+        };
 
-        function editCatNames() {
+        window.editCatNames = function() {
             const names = getCatNames();
             const cat1Name = prompt('첫째 고양이 이름을 입력하세요:', names.cat1);
             if (cat1Name === null) return;
             const cat2Name = prompt('둘째 고양이 이름을 입력하세요:', names.cat2);
             if (cat2Name === null) return;
 
-            setCatNames({
+            window.setCatNames({
                 cat1: cat1Name.trim() || '첫째',
                 cat2: cat2Name.trim() || '둘째'
             });
-        }
+        };
 
-        function switchCat(catId) {
-            currentCat = catId;
+        window.switchCat = function(catId) {
+            window.currentCat = catId;
             ['cat1', 'cat2'].forEach(id => {
                 const btn = document.getElementById(`tab-${id}`);
                 if (id === catId) {
@@ -235,22 +272,22 @@
             });
 
             updateCatNameUI();
-            const date = document.getElementById('logDate').value || today;
+            const date = document.getElementById('logDate').value || window.today;
             loadLogForDate(date);
             renderAll();
-        }
+        };
 
-        function changeVal(type, val) {
+        window.changeVal = function(type, val) {
             if (type === 'peeCount') {
-                currentPee = Math.max(0, currentPee + val);
-                document.getElementById('peeCountDisplay').innerText = currentPee;
+                window.currentPee = Math.max(0, window.currentPee + val);
+                document.getElementById('peeCountDisplay').innerText = window.currentPee;
             } else if (type === 'poopCount') {
-                currentPoop = Math.max(0, currentPoop + val);
-                document.getElementById('poopCountDisplay').innerText = currentPoop;
+                window.currentPoop = Math.max(0, window.currentPoop + val);
+                document.getElementById('poopCountDisplay').innerText = window.currentPoop;
             }
-        }
+        };
 
-        function addFoodRow(type = '', amount = '', time = '') {
+        window.addFoodRow = function(type = '', amount = '', time = '') {
             const container = document.getElementById('foodContainer');
             const row = document.createElement('div');
             row.className = 'flex gap-2 items-center food-row';
@@ -261,9 +298,9 @@
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 font-bold px-1 text-sm">✕</button>
             `;
             container.appendChild(row);
-        }
+        };
 
-        function addSnackRow(type = '', amount = '', time = '') {
+        window.addSnackRow = function(type = '', amount = '', time = '') {
             const container = document.getElementById('snackContainer');
             const row = document.createElement('div');
             row.className = 'flex gap-2 items-center snack-row';
@@ -274,7 +311,7 @@
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 font-bold px-1 text-sm">✕</button>
             `;
             container.appendChild(row);
-        }
+        };
 
         function getDynamicData(containerId, rowClass, prefix) {
             const rows = document.querySelectorAll(`#${containerId} .${rowClass}`);
@@ -290,66 +327,16 @@
             return data;
         }
 
-        function getCurrentLogs() {
-            return (window.allCatLogs && window.allCatLogs[currentCat]) ? window.allCatLogs[currentCat] : [];
-        }
-
-        async function saveLog() {
-            const date = document.getElementById('logDate').value;
-            if (!date) { alert('날짜를 선택하세요.'); return; }
-
-            const foods = getDynamicData('foodContainer', 'food-row', 'food');
-            const snacks = getDynamicData('snackContainer', 'snack-row', 'snack');
-
-            const entry = {
-                date,
-                pee: currentPee,
-                poop: currentPoop,
-                water: document.getElementById('waterIntake').value,
-                foods,
-                snacks,
-                supplements: document.getElementById('supplements').value,
-                weight: document.getElementById('weight').value,
-                vitality: document.getElementById('vitality').value,
-                memo: document.getElementById('memo').value
-            };
-
-            let logs = getCurrentLogs().filter(item => item.date !== date);
-            logs.push(entry);
-            logs.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-            if (window.db) {
-                await window.firestoreSetDoc(window.firestoreDoc(window.db, "catCare", `logs_${currentCat}`), { list: logs });
-                const names = getCatNames();
-                alert(`${names[currentCat]}의 기록이 구글 DB에 실시간 저장되었습니다!`);
-            }
-        }
-
-        async function deleteLog(targetDate) {
-            const names = getCatNames();
-            if (!confirm(`${names[currentCat]}의 ${targetDate} 기록을 삭제하시겠습니까?`)) return;
-            
-            let logs = getCurrentLogs().filter(item => item.date !== targetDate);
-            
-            if (window.db) {
-                await window.firestoreSetDoc(window.firestoreDoc(window.db, "catCare", `logs_${currentCat}`), { list: logs });
-            }
-            
-            if (document.getElementById('logDate').value === targetDate) {
-                resetForm();
-            }
-        }
-
-        function loadLogForDate(selectedDate) {
+        window.loadLogForDate = function(selectedDate) {
             resetForm(selectedDate);
             const logs = getCurrentLogs();
             const log = logs.find(item => item.date === selectedDate);
 
             if (log) {
-                currentPee = log.pee || 0;
-                currentPoop = log.poop || 0;
-                document.getElementById('peeCountDisplay').innerText = currentPee;
-                document.getElementById('poopCountDisplay').innerText = currentPoop;
+                window.currentPee = log.pee || 0;
+                window.currentPoop = log.poop || 0;
+                document.getElementById('peeCountDisplay').innerText = window.currentPee;
+                document.getElementById('poopCountDisplay').innerText = window.currentPoop;
                 document.getElementById('waterIntake').value = log.water || '';
 
                 document.getElementById('foodContainer').innerHTML = '';
@@ -371,13 +358,13 @@
                 document.getElementById('vitality').value = log.vitality || '';
                 document.getElementById('memo').value = log.memo || '';
             }
-        }
+        };
 
-        function resetForm(targetDate = today) {
+        function resetForm(targetDate = window.today) {
             document.getElementById('logDate').value = targetDate;
             document.getElementById('currentDateDisplay').innerText = targetDate;
-            currentPee = 0;
-            currentPoop = 0;
+            window.currentPee = 0;
+            window.currentPoop = 0;
             document.getElementById('peeCountDisplay').innerText = 0;
             document.getElementById('poopCountDisplay').innerText = 0;
             document.getElementById('waterIntake').value = '';
@@ -391,13 +378,13 @@
             addSnackRow();
         }
 
-        function exportToCSV() {
+        window.exportToCSV = function() {
             const names = getCatNames();
             const headers = ['고양이', '날짜', '감자(소변)', '맛동산(대변)', '음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
             let allRows = [];
 
             ['cat1', 'cat2'].forEach(catId => {
-                const logs = (window.allCatLogs && window.allCatLogs[catId]) ? window.allCatLogs[catId] : [];
+                const logs = window.allCatLogs[catId] || [];
                 const catName = names[catId];
 
                 logs.forEach(log => {
@@ -433,11 +420,11 @@
             
             const link = document.createElement('a');
             link.setAttribute('href', url);
-            link.setAttribute('download', `환묘_통합_케어_노트_${today}.csv`);
+            link.setAttribute('download', `환묘_통합_케어_노트_${window.today}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
+        };
 
         function renderAll() {
             const logs = getCurrentLogs();
@@ -447,9 +434,9 @@
             const peeData = recentLogs.map(l => l.pee);
             const poopData = recentLogs.map(l => l.poop);
 
-            if (toiletChartInstance) toiletChartInstance.destroy();
+            if (window.toiletChartInstance) window.toiletChartInstance.destroy();
             const ctx = document.getElementById('toiletChart').getContext('2d');
-            toiletChartInstance = new Chart(ctx, {
+            window.toiletChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: dates,
@@ -503,9 +490,8 @@
             });
         }
 
-        window.onload = function() {
-            switchCat('cat1');
-        };
+        // 초기 시작
+        window.switchCat('cat1');
     </script>
 </body>
 </html>
