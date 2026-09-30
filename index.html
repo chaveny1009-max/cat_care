@@ -51,23 +51,33 @@
                 <input type="date" id="logDate" onchange="loadLogForDate(this.value)" class="p-2 border rounded-xl bg-slate-50 text-sm font-semibold focus:outline-amber-500">
             </div>
 
-            <!-- 대소변 (감자 & 맛동산 Counter) -->
+            <!-- 대소변 (감자 & 맛동산 Counter + 자동 시간 채록) -->
             <div class="grid grid-cols-2 gap-3">
-                <div class="bg-blue-50 p-3 rounded-xl text-center border border-blue-100">
-                    <label class="block text-sm font-bold text-blue-700 mb-1">🥔 감자 (소변)</label>
-                    <div class="flex justify-center items-center gap-3">
-                        <button type="button" onclick="changeVal('peeCount', -1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">-</button>
-                        <span id="peeCountDisplay" class="text-xl font-extrabold text-blue-900">0</span>
-                        <button type="button" onclick="changeVal('peeCount', 1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">+</button>
+                <div class="bg-blue-50 p-3 rounded-xl text-center border border-blue-100 flex flex-col justify-between">
+                    <div>
+                        <label class="block text-sm font-bold text-blue-700 mb-1">🥔 감자 (소변)</label>
+                        <div class="flex justify-center items-center gap-3 my-1">
+                            <button type="button" onclick="changeVal('pee', -1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">-</button>
+                            <span id="peeCountDisplay" class="text-xl font-extrabold text-blue-900">0</span>
+                            <button type="button" onclick="changeVal('pee', 1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">+</button>
+                        </div>
+                    </div>
+                    <div id="peeTimesDisplay" class="text-[11px] text-blue-600 font-medium min-h-[18px] bg-blue-100/50 rounded py-0.5 px-1 truncate mt-1">
+                        시간: 없음
                     </div>
                 </div>
 
-                <div class="bg-amber-50 p-3 rounded-xl text-center border border-amber-100">
-                    <label class="block text-sm font-bold text-amber-800 mb-1">💩 맛동산 (대변)</label>
-                    <div class="flex justify-center items-center gap-3">
-                        <button type="button" onclick="changeVal('poopCount', -1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">-</button>
-                        <span id="poopCountDisplay" class="text-xl font-extrabold text-amber-900">0</span>
-                        <button type="button" onclick="changeVal('poopCount', 1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">+</button>
+                <div class="bg-amber-50 p-3 rounded-xl text-center border border-amber-100 flex flex-col justify-between">
+                    <div>
+                        <label class="block text-sm font-bold text-amber-800 mb-1">💩 맛동산 (대변)</label>
+                        <div class="flex justify-center items-center gap-3 my-1">
+                            <button type="button" onclick="changeVal('poop', -1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">-</button>
+                            <span id="poopCountDisplay" class="text-xl font-extrabold text-amber-900">0</span>
+                            <button type="button" onclick="changeVal('poop', 1)" class="w-8 h-8 bg-white shadow rounded-lg text-lg font-bold text-slate-600 active:scale-90">+</button>
+                        </div>
+                    </div>
+                    <div id="poopTimesDisplay" class="text-[11px] text-amber-700 font-medium min-h-[18px] bg-amber-100/50 rounded py-0.5 px-1 truncate mt-1">
+                        시간: 없음
                     </div>
                 </div>
             </div>
@@ -159,12 +169,29 @@
 
         // 상태 변수
         window.currentCat = 'cat1';
-        window.currentPee = 0;
-        window.currentPoop = 0;
+        window.peeTimes = [];
+        window.poopTimes = [];
         window.toiletChartInstance = null;
         window.allCatLogs = { cat1: [], cat2: [] };
         window.catNames = { cat1: '첫째', cat2: '둘째' };
         window.today = new Date().toISOString().split('T')[0];
+
+        // 현재 시간 구하기 (HH:MM)
+        function getCurrentTimeString() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        // 대소변 UI 업데이트
+        function updateToiletDisplay() {
+            document.getElementById('peeCountDisplay').innerText = window.peeTimes.length;
+            document.getElementById('peeTimesDisplay').innerText = window.peeTimes.length > 0 ? `시간: ${window.peeTimes.join(', ')}` : '시간: 없음';
+            
+            document.getElementById('poopCountDisplay').innerText = window.poopTimes.length;
+            document.getElementById('poopTimesDisplay').innerText = window.poopTimes.length > 0 ? `시간: ${window.poopTimes.join(', ')}` : '시간: 없음';
+        }
 
         // 고양이 이름 실시간 수신
         onSnapshot(doc(db, "catCare", "settings"), (snapshot) => {
@@ -186,7 +213,19 @@
             });
         });
 
-        // 전역 함수 정의 (HTML 버튼 지원)
+        // 전역 함수 정의
+        window.changeVal = function(type, val) {
+            const nowTime = getCurrentTimeString();
+            if (type === 'pee') {
+                if (val > 0) window.peeTimes.push(nowTime);
+                else if (val < 0 && window.peeTimes.length > 0) window.peeTimes.pop();
+            } else if (type === 'poop') {
+                if (val > 0) window.poopTimes.push(nowTime);
+                else if (val < 0 && window.poopTimes.length > 0) window.poopTimes.pop();
+            }
+            updateToiletDisplay();
+        };
+
         window.saveLog = async function() {
             const date = document.getElementById('logDate').value;
             if (!date) { alert('날짜를 선택하세요.'); return; }
@@ -196,8 +235,10 @@
 
             const entry = {
                 date,
-                pee: window.currentPee,
-                poop: window.currentPoop,
+                pee: window.peeTimes.length,
+                peeTimes: [...window.peeTimes],
+                poop: window.poopTimes.length,
+                poopTimes: [...window.poopTimes],
                 water: document.getElementById('waterIntake').value,
                 foods,
                 snacks,
@@ -234,7 +275,6 @@
             await setDoc(doc(db, "catCare", "settings"), { names }, { merge: true });
         };
 
-        // 헬퍼 및 UI 함수들
         function getCatNames() {
             return window.catNames || { cat1: '첫째', cat2: '둘째' };
         }
@@ -280,16 +320,6 @@
             const date = document.getElementById('logDate').value || window.today;
             loadLogForDate(date);
             renderAll();
-        };
-
-        window.changeVal = function(type, val) {
-            if (type === 'peeCount') {
-                window.currentPee = Math.max(0, window.currentPee + val);
-                document.getElementById('peeCountDisplay').innerText = window.currentPee;
-            } else if (type === 'poopCount') {
-                window.currentPoop = Math.max(0, window.currentPoop + val);
-                document.getElementById('poopCountDisplay').innerText = window.currentPoop;
-            }
         };
 
         window.addFoodRow = function(type = '', amount = '', time = '') {
@@ -338,10 +368,10 @@
             const log = logs.find(item => item.date === selectedDate);
 
             if (log) {
-                window.currentPee = log.pee || 0;
-                window.currentPoop = log.poop || 0;
-                document.getElementById('peeCountDisplay').innerText = window.currentPee;
-                document.getElementById('poopCountDisplay').innerText = window.currentPoop;
+                window.peeTimes = log.peeTimes || (log.pee ? Array(log.pee).fill('기록없음') : []);
+                window.poopTimes = log.poopTimes || (log.poop ? Array(log.poop).fill('기록없음') : []);
+                updateToiletDisplay();
+
                 document.getElementById('waterIntake').value = log.water || '';
 
                 document.getElementById('foodContainer').innerHTML = '';
@@ -368,10 +398,10 @@
         function resetForm(targetDate = window.today) {
             document.getElementById('logDate').value = targetDate;
             document.getElementById('currentDateDisplay').innerText = targetDate;
-            window.currentPee = 0;
-            window.currentPoop = 0;
-            document.getElementById('peeCountDisplay').innerText = 0;
-            document.getElementById('poopCountDisplay').innerText = 0;
+            window.peeTimes = [];
+            window.poopTimes = [];
+            updateToiletDisplay();
+
             document.getElementById('waterIntake').value = '';
             document.getElementById('foodContainer').innerHTML = '';
             document.getElementById('snackContainer').innerHTML = '';
@@ -385,7 +415,7 @@
 
         window.exportToCSV = function() {
             const names = getCatNames();
-            const headers = ['고양이', '날짜', '감자(소변)', '맛동산(대변)', '음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
+            const headers = ['고양이', '날짜', '감자(소변)', '감자시각', '맛동산(대변)', '맛동산시각', '음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
             let allRows = [];
 
             ['cat1', 'cat2'].forEach(catId => {
@@ -395,12 +425,16 @@
                 logs.forEach(log => {
                     const foodStr = log.foods ? log.foods.map(f => `${f.type} ${f.amount}${f.time ? '(' + f.time + ')' : ''}`).join(' / ') : '';
                     const snackStr = log.snacks ? log.snacks.map(s => `${s.type} ${s.amount}${s.time ? '(' + s.time + ')' : ''}`).join(' / ') : '';
+                    const peeTimesStr = log.peeTimes ? log.peeTimes.join(';') : '';
+                    const poopTimesStr = log.poopTimes ? log.poopTimes.join(';') : '';
 
                     allRows.push([
                         `"${catName}"`,
                         log.date,
                         log.pee,
+                        `"${peeTimesStr}"`,
                         log.poop,
+                        `"${poopTimesStr}"`,
                         log.water || 0,
                         `"${foodStr.replace(/"/g, '""')}"`,
                         `"${snackStr.replace(/"/g, '""')}"`,
@@ -471,11 +505,16 @@
                 let foodHtml = log.foods?.map(f => `• ${f.type} ${f.amount} ${f.time ? '('+f.time+')' : ''}`).join('<br>') || '-';
                 let snackHtml = log.snacks?.map(s => `• ${s.type} ${s.amount} ${s.time ? '('+s.time+')' : ''}`).join('<br>') || '-';
 
+                const peeTimeTxt = log.peeTimes && log.peeTimes.length > 0 ? `(${log.peeTimes.join(', ')})` : '';
+                const poopTimeTxt = log.poopTimes && log.poopTimes.length > 0 ? `(${log.poopTimes.join(', ')})` : '';
+
                 item.innerHTML = `
                     <div class="flex justify-between items-center font-bold text-slate-700 border-b pb-1">
                         <span class="cursor-pointer text-amber-600 hover:underline" onclick="loadLogForDate('${log.date}')">📅 ${log.date}</span>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-normal bg-slate-200 px-2 py-0.5 rounded">🥔 ${log.pee}회 / 💩 ${log.poop}회</span>
+                            <span class="text-xs font-normal bg-slate-200 px-2 py-0.5 rounded">
+                                🥔 ${log.pee}회 ${peeTimeTxt} / 💩 ${log.poop}회 ${poopTimeTxt}
+                            </span>
                             <button onclick="deleteLog('${log.date}')" class="text-slate-400 hover:text-red-500 text-xs px-1">✕</button>
                         </div>
                     </div>
