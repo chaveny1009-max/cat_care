@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 pb-12">
 
-    <!-- 상단 헤더 (월간 리포트 이미지 캡처/저장 버튼 포함) -->
+    <!-- 상단 헤더 -->
     <header class="bg-amber-500 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold">🐾 환묘 케어 노트</h1>
         <div class="flex items-center gap-1.5">
@@ -112,7 +112,7 @@
                 </div>
             </div>
 
-            <!-- 밥 (식사) - 수기 입력 제외 완료 -->
+            <!-- 밥 (식사) -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
                     <label class="text-sm font-bold text-slate-700">🥣 밥 (식사 수분 자동계산)</label>
@@ -121,7 +121,7 @@
                 <div id="foodContainer" class="space-y-2"></div>
             </div>
 
-            <!-- 간식 (수분 카테고리 + 수기입력 지원) -->
+            <!-- 간식 (마구로쥬레 최상단 추가) -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
                     <label class="text-sm font-bold text-slate-700">🐟 간식 (수분 자동계산 연동)</label>
@@ -159,7 +159,7 @@
             </button>
         </section>
 
-        <!-- 2. 주간 리포트 영역 (오늘 기록 저장하기 아래 배치) -->
+        <!-- 2. 주간 리포트 영역 -->
         <section id="weeklyReportSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <h2 class="text-lg font-bold mb-3 text-slate-700">📊 <span id="chartCatName">첫째</span>의 최근 7일 종합 리포트</h2>
             <div class="h-56 relative mb-2">
@@ -168,7 +168,7 @@
             <p class="text-[11px] text-slate-400 text-center">* 막대: 배변 횟수 / 꺾은선: 총 음수량 (ml)</p>
         </section>
 
-        <!-- 숨겨진 월간 리포트 영역 (상단 버튼으로 스마트폰 '사진' 앱에 캡처 저장용) -->
+        <!-- 숨겨진 월간 리포트 영역 (사진 앨범 저장용 캡처 타겟) -->
         <div class="hidden">
             <section id="monthlyReportSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 w-[400px]">
                 <div class="flex justify-between items-center border-b pb-3">
@@ -316,7 +316,6 @@
         window.calculateTotalWater = function() {
             let totalFoodWater = 0;
 
-            // 1. 밥 수분 계산 (수기 입력 제거됨)
             document.querySelectorAll('#foodContainer .food-row').forEach(row => {
                 const select = row.querySelector('.food-select');
                 const amountInput = row.querySelector('.food-amount');
@@ -329,7 +328,6 @@
                 }
             });
 
-            // 2. 간식 수분 계산 (드롭다운 + 수기입력 지원)
             document.querySelectorAll('#snackContainer .snack-row').forEach(row => {
                 const select = row.querySelector('.snack-select');
                 const customMoistureInput = row.querySelector('.snack-custom-moisture');
@@ -538,7 +536,6 @@
             renderHistoryList();
         };
 
-        // 밥 행 추가 (수기 입력 제거됨)
         window.addFoodRow = function(type = '', amount = '', time = '') {
             const container = document.getElementById('foodContainer');
             const row = document.createElement('div');
@@ -574,13 +571,14 @@
             });
         }
 
-        // 간식 행 추가 (카테고리 + 수기입력 지원)
+        // 간식 행 추가 (마구로쥬레 최상단 배치)
         window.addSnackRow = function(type = '', amount = '', time = '', customMoisture = '') {
             const container = document.getElementById('snackContainer');
             const row = document.createElement('div');
             row.className = 'flex gap-1.5 items-center snack-row';
 
             const snackPresets = [
+                { id: 'maguro', label: '이나바 마구로쥬레', moisture: 90 },
                 { id: 'churu', label: '액체형(츄르/스틱)', moisture: 85 },
                 { id: 'tongsal', label: '통살/촉촉(보니또/츄르비)', moisture: 70 },
                 { id: 'dry', label: '건조트릿/건식', moisture: 0 }
@@ -706,32 +704,51 @@
             calculateTotalWater();
         }
 
-        // 상단 월간 리포트 이미지 생성 후 스마트폰 '사진(앨범)' 저장
-        window.exportMonthlyReportToImage = function() {
-            renderMonthlyReportData(); // 최신 데이터 반영
+        // 월간 리포트 이미지 생성 후 스마트폰 '사진(앨범)' 공유/저장 지원
+        window.exportMonthlyReportToImage = async function() {
+            renderMonthlyReportData();
             const section = document.getElementById('monthlyReportSection');
-            section.parentElement.classList.remove('hidden'); // 일시적으로 화면에 렌더링되도록 노출
+            section.parentElement.classList.remove('hidden');
             
             const catName = window.catProfiles[window.currentCat]?.name || '고양이';
+            const fileName = `${catName}_${window.selectedYearMonth}_월간리포트.png`;
             
-            setTimeout(() => {
-                html2canvas(section, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
-                    section.parentElement.classList.add('hidden'); // 다시 숨김
+            setTimeout(async () => {
+                try {
+                    const canvas = await html2canvas(section, { scale: 2, backgroundColor: '#ffffff' });
+                    section.parentElement.classList.add('hidden');
                     
-                    const image = canvas.toDataURL("image/png");
-                    const link = document.createElement('a');
-                    link.href = image;
-                    link.download = `${catName}_${window.selectedYearMonth}_월간리포트.png`;
-                    link.click();
-                    alert('월간 리포트가 사진(앨범) 저장용 파일로 다운로드되었습니다!');
-                }).catch(err => {
+                    canvas.toBlob(async (blob) => {
+                        const file = new File([blob], fileName, { type: 'image/png' });
+                        
+                        // 모바일 브라우저 공유하기 API 지원 시 '사진에 저장' 및 공유 시트 호출
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({
+                                    files: [file],
+                                    title: '월간 케어 리포트',
+                                    text: `${catName}의 ${window.selectedYearMonth} 건강 리포트입니다.`
+                                });
+                                return;
+                            } catch (shareErr) {
+                                if (shareErr.name !== 'AbortError') console.log(shareErr);
+                            }
+                        }
+                        
+                        // 일반 다운로드 백업
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = fileName;
+                        link.click();
+                        alert('월간 리포트가 이미지 파일로 저장되었습니다.');
+                    }, 'image/png');
+                } catch (err) {
                     section.parentElement.classList.add('hidden');
                     alert('이미지 생성 중 오류가 발생했습니다.');
-                });
+                }
             }, 100);
         };
 
-        // 주간 리포트 (오늘 기록 저장하기 아래 위치)
         function renderWeeklyReport() {
             const logs = getCurrentLogs();
             const recentLogs = logs.slice(-7);
@@ -765,7 +782,6 @@
             });
         }
 
-        // 월간 리포트 데이터 생성 및 렌더링
         function renderMonthlyReportData() {
             const logs = getCurrentLogs();
             const [sYear, sMonth] = window.selectedYearMonth.split('-').map(Number);
