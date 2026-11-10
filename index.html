@@ -12,17 +12,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2canvas (화면 이미지 캡처/저장용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 pb-12">
 
     <!-- 상단 헤더 -->
     <header class="bg-amber-500 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold">🐾 환묘 케어 노트</h1>
-        <div class="flex items-center gap-2">
-            <button type="button" onclick="exportToCSV()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition-colors">
-                📥 CSV 저장
+        <div class="flex items-center gap-1.5">
+            <!-- 주간 리포트 이미지 저장 버튼 -->
+            <button type="button" onclick="exportReportToImage()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition-colors flex items-center gap-1">
+                📸 주간 리포트
             </button>
-            <span id="currentDateDisplay" class="text-xs bg-amber-600 px-2 py-1.5 rounded"></span>
+            <!-- 앱 강제 새로고침 (업데이트) 버튼 -->
+            <button type="button" onclick="forceAppRefresh()" title="최신 데이터/코드 갱신" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1.5 rounded-lg shadow transition-colors">
+                🔄
+            </button>
         </div>
     </header>
 
@@ -156,12 +162,13 @@
             </button>
         </section>
 
-        <!-- 2. 감자/맛동산 변화 추이 그래프 -->
-        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold mb-3 text-slate-700">📊 <span id="chartCatName">첫째</span>의 배변 추이 (최근 7일)</h2>
-            <div class="h-52 relative">
+        <!-- 2. 감자/맛동산/음수량 주간 리포트 (캡처 대상 영역) -->
+        <section id="weeklyReportSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-lg font-bold mb-3 text-slate-700">📊 <span id="chartCatName">첫째</span>의 최근 7일 종합 리포트</h2>
+            <div class="h-56 relative mb-2">
                 <canvas id="toiletChart"></canvas>
             </div>
+            <p class="text-[11px] text-slate-400 text-center">* 막대: 배변 횟수 / 꺾은선: 총 음수량 (ml)</p>
         </section>
 
         <!-- 3. 최근 기록 리스트 -->
@@ -188,7 +195,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 기본 사료 프리셋 DB (수분 비율 %)
         const defaultFoodDb = [
             { name: "알모네이처 HFC", moisture: 82 },
             { name: "로얄캐닌 인스턴티브 습식", moisture: 79 },
@@ -197,7 +203,6 @@
             { name: "건식사료 (일반)", moisture: 10 }
         ];
 
-        // 상태 변수
         window.currentCat = 'cat1';
         window.peeTimes = [];
         window.poopTimes = [];
@@ -209,6 +214,13 @@
         };
         window.foodDb = [...defaultFoodDb];
         window.today = new Date().toISOString().split('T')[0];
+
+        // 앱 강제 새로고침 트리거
+        window.forceAppRefresh = function() {
+            if (confirm("앱을 최신 상태로 새로고침하시겠습니까?")) {
+                window.location.reload(true);
+            }
+        };
 
         // 파이어베이스 settings 수신
         onSnapshot(doc(db, "catCare", "settings"), (snapshot) => {
@@ -245,7 +257,6 @@
             document.getElementById('poopTimesDisplay').innerText = window.poopTimes.length > 0 ? `시간: ${window.poopTimes.join(', ')}` : '시간: 없음';
         }
 
-        // 음수량 자동 계산 및 게이지 바 업데이트
         window.calculateTotalWater = function() {
             const foodRows = document.querySelectorAll('#foodContainer .food-row');
             let foodWater = 0;
@@ -267,7 +278,7 @@
 
             const profile = window.catProfiles[window.currentCat] || { weight: 4.0 };
             const weight = parseFloat(profile.weight) || 4.0;
-            const targetWater = Math.round(weight * 50); // 체중(kg) x 50ml (수의학 표준)
+            const targetWater = Math.round(weight * 50);
 
             const pct = Math.min(Math.round((totalWater / targetWater) * 100), 100);
             const rawPct = Math.round((totalWater / targetWater) * 100);
@@ -279,15 +290,10 @@
             const bar = document.getElementById('waterProgressBar');
             bar.style.width = `${pct}%`;
 
-            if (rawPct < 50) {
-                bar.className = 'h-full rounded-full transition-all duration-500 bg-rose-400';
-            } else if (rawPct < 85) {
-                bar.className = 'h-full rounded-full transition-all duration-500 bg-amber-400';
-            } else if (rawPct <= 100) {
-                bar.className = 'h-full rounded-full transition-all duration-500 bg-emerald-500';
-            } else {
-                bar.className = 'h-full rounded-full transition-all duration-500 bg-cyan-500 shadow-sm animate-pulse';
-            }
+            if (rawPct < 50) bar.className = 'h-full rounded-full transition-all duration-500 bg-rose-400';
+            else if (rawPct < 85) bar.className = 'h-full rounded-full transition-all duration-500 bg-amber-400';
+            else if (rawPct <= 100) bar.className = 'h-full rounded-full transition-all duration-500 bg-emerald-500';
+            else bar.className = 'h-full rounded-full transition-all duration-500 bg-cyan-500 shadow-sm animate-pulse';
         };
 
         window.changeVal = function(type, val) {
@@ -309,13 +315,23 @@
             const foods = getDynamicFoodData();
             const snacks = getDynamicData('snackContainer', 'snack-row', 'snack');
 
+            // 당일 전체 음수량 자동 계산 및 저장
+            let foodWater = 0;
+            foods.forEach(f => {
+                const item = window.foodDb.find(d => d.name === f.type);
+                if (item && f.amount) foodWater += (parseFloat(f.amount) * (item.moisture / 100));
+            });
+            const directWater = parseFloat(document.getElementById('waterIntake').value) || 0;
+            const calculatedTotalWater = Math.round(foodWater + directWater);
+
             const entry = {
                 date,
                 pee: window.peeTimes.length,
                 peeTimes: [...window.peeTimes],
                 poop: window.poopTimes.length,
                 poopTimes: [...window.poopTimes],
-                water: document.getElementById('waterIntake').value,
+                water: directWater,
+                totalWater: calculatedTotalWater,
                 foods,
                 snacks,
                 supplements: document.getElementById('supplements').value,
@@ -343,7 +359,7 @@
             const p = window.catProfiles[window.currentCat] || { name: '첫째', weight: 4.0 };
             const newName = prompt(`[${p.name}]의 이름을 입력하세요:`, p.name);
             if (newName === null) return;
-            const newWeight = prompt(`[${newName || p.name}]의 체중(kg)을 입력하세요 (목표 음수량 계산용):`, p.weight || 4.0);
+            const newWeight = prompt(`[${newName || p.name}]의 체중(kg)을 입력하세요:`, p.weight || 4.0);
             if (newWeight === null) return;
 
             window.catProfiles[window.currentCat] = {
@@ -358,7 +374,7 @@
 
         window.openFoodManager = async function() {
             let dbStr = window.foodDb.map(f => `${f.name}:${f.moisture}`).join('\n');
-            let input = prompt("등록할 습식사료와 수분함량(%)을 입력하세요 (형식: 제품명:수분%):\n\n예시:\n알모네이처 HFC:82\n로얄캐닌 인스턴티브:79", dbStr);
+            let input = prompt("습식사료 수분함량(%) 목록을 입력/수정하세요 (형식: 제품명:수분%):", dbStr);
             if (input === null) return;
 
             let newDb = [];
@@ -535,54 +551,23 @@
             calculateTotalWater();
         }
 
-        window.exportToCSV = function() {
-            const p = window.catProfiles;
-            const headers = ['고양이', '날짜', '감자(소변)', '감자시각', '맛동산(대변)', '맛동산시각', '직접음수량(ml)', '밥(식사)', '간식', '약/영양제', '체중(kg)', '활력', '특이사항 메모'];
-            let allRows = [];
-
-            ['cat1', 'cat2'].forEach(catId => {
-                const logs = window.allCatLogs[catId] || [];
-                const catName = p[catId]?.name || catId;
-
-                logs.forEach(log => {
-                    const foodStr = log.foods ? log.foods.map(f => `${f.type} ${f.amount}g${f.time ? '(' + f.time + ')' : ''}`).join(' / ') : '';
-                    const snackStr = log.snacks ? log.snacks.map(s => `${s.type} ${s.amount}${s.time ? '(' + s.time + ')' : ''}`).join(' / ') : '';
-                    const peeTimesStr = log.peeTimes ? log.peeTimes.join(';') : '';
-                    const poopTimesStr = log.poopTimes ? log.poopTimes.join(';') : '';
-
-                    allRows.push([
-                        `"${catName}"`,
-                        log.date,
-                        log.pee,
-                        `"${peeTimesStr}"`,
-                        log.poop,
-                        `"${poopTimesStr}"`,
-                        log.water || 0,
-                        `"${foodStr.replace(/"/g, '""')}"`,
-                        `"${snackStr.replace(/"/g, '""')}"`,
-                        `"${(log.supplements || '').replace(/"/g, '""')}"`,
-                        log.weight || '',
-                        `"${(log.vitality || '').replace(/"/g, '""')}"`,
-                        `"${(log.memo || '').replace(/"/g, '""')}"`
-                    ]);
-                });
-            });
-
-            if (allRows.length === 0) { alert('저장된 기록이 없습니다.'); return; }
-            allRows.sort((a, b) => new Date(a[1]) - new Date(b[1]));
-
-            let csvContent = '\uFEFF' + [headers.join(','), ...allRows.map(e => e.join(','))].join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+        // 최근 7일 종합 리포트 이미지 저장 기능 (html2canvas 활용)
+        window.exportReportToImage = function() {
+            const section = document.getElementById('weeklyReportSection');
+            const catName = window.catProfiles[window.currentCat]?.name || '고양이';
             
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            link.setAttribute('download', `환묘_통합_케어_노트_${window.today}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            alert('주간 리포트 이미지를 생성합니다. 잠시만 기다려주세요!');
+
+            html2canvas(section, { scale: 2 }).then(canvas => {
+                const image = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `${catName}_주간케어리포트_${window.today}.png`;
+                link.click();
+            });
         };
 
+        // 복합 차트 (배변 막대그래프 + 음수량 꺾은선 그래프)
         function renderAll() {
             const logs = getCurrentLogs();
             const recentLogs = logs.slice(-7);
@@ -590,22 +575,28 @@
             const dates = recentLogs.map(l => l.date.slice(5));
             const peeData = recentLogs.map(l => l.pee);
             const poopData = recentLogs.map(l => l.poop);
+            const waterData = recentLogs.map(l => l.totalWater || l.water || 0);
 
             if (window.toiletChartInstance) window.toiletChartInstance.destroy();
             const ctx = document.getElementById('toiletChart').getContext('2d');
+            
             window.toiletChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: dates,
                     datasets: [
-                        { label: '🥔 감자(회)', data: peeData, backgroundColor: '#3b82f6' },
-                        { label: '💩 맛동산(회)', data: poopData, backgroundColor: '#f59e0b' }
+                        { type: 'bar', label: '🥔 감자(회)', data: peeData, backgroundColor: '#3b82f6', yAxisID: 'y' },
+                        { type: 'bar', label: '💩 맛동산(회)', data: poopData, backgroundColor: '#f59e0b', yAxisID: 'y' },
+                        { type: 'line', label: '💧 음수량(ml)', data: waterData, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 2, fill: false, tension: 0.2, yAxisID: 'y1' }
                     ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    scales: { 
+                        y: { type: 'linear', display: true, position: 'left', beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: '횟수' } },
+                        y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'ml' } }
+                    }
                 }
             });
 
@@ -637,7 +628,7 @@
                     </div>
                     ${log.supplements ? `<div class="text-xs text-slate-600"><strong>💊 약/영양제:</strong> ${log.supplements}</div>` : ''}
                     <div class="flex justify-between text-xs text-slate-500 pt-1 border-t">
-                        <span>💧 직접음수: ${log.water ? log.water + 'ml' : '-'}</span>
+                        <span>💧 총음수: ${log.totalWater ? log.totalWater + 'ml' : (log.water ? log.water + 'ml' : '-')}</span>
                         <span>⚖️ 체중: ${log.weight ? log.weight + 'kg' : '-'}</span>
                         <span>✨ 활력: ${log.vitality || '-'}</span>
                     </div>
