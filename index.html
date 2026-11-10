@@ -17,12 +17,12 @@
 </head>
 <body class="bg-slate-100 text-slate-800 pb-12">
 
-    <!-- 상단 헤더 -->
+    <!-- 상단 헤더 (월간 리포트 이미지 캡처/저장 버튼 포함) -->
     <header class="bg-amber-500 text-white p-4 shadow-md sticky top-0 z-10 flex justify-between items-center">
         <h1 class="text-xl font-bold">🐾 환묘 케어 노트</h1>
         <div class="flex items-center gap-1.5">
             <button type="button" onclick="exportMonthlyReportToImage()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition-colors flex items-center gap-1">
-                📸 월간 리포트
+                📸 월간 리포트 (사진저장)
             </button>
             <button type="button" onclick="forceAppRefresh()" title="최신 데이터/코드 갱신" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1.5 rounded-lg shadow transition-colors">
                 🔄
@@ -112,7 +112,7 @@
                 </div>
             </div>
 
-            <!-- 밥 (식사) -->
+            <!-- 밥 (식사) - 수기 입력 제외 완료 -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
                     <label class="text-sm font-bold text-slate-700">🥣 밥 (식사 수분 자동계산)</label>
@@ -121,7 +121,7 @@
                 <div id="foodContainer" class="space-y-2"></div>
             </div>
 
-            <!-- 간식 (수분 연동 확장) -->
+            <!-- 간식 (수분 카테고리 + 수기입력 지원) -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
                     <label class="text-sm font-bold text-slate-700">🐟 간식 (수분 자동계산 연동)</label>
@@ -159,36 +159,43 @@
             </button>
         </section>
 
-        <!-- 2. 월간 리포트 영역 -->
-        <section id="monthlyReportSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <div class="flex justify-between items-center border-b pb-3">
-                <h2 class="text-base font-bold text-slate-700">📊 <span id="chartCatName">첫째</span>의 월간 리포트</h2>
-                <div class="flex items-center gap-2">
-                    <button type="button" onclick="changeMonth(-1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600">◀</button>
-                    <span id="selectedMonthDisplay" class="text-xs font-extrabold text-amber-600">2026년 11월</span>
-                    <button type="button" onclick="changeMonth(1)" class="w-7 h-7 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600">▶</button>
-                </div>
+        <!-- 2. 주간 리포트 영역 (오늘 기록 저장하기 아래 배치) -->
+        <section id="weeklyReportSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-lg font-bold mb-3 text-slate-700">📊 <span id="chartCatName">첫째</span>의 최근 7일 종합 리포트</h2>
+            <div class="h-56 relative mb-2">
+                <canvas id="toiletChart"></canvas>
             </div>
-
-            <div class="grid grid-cols-2 gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-xs">
-                <div>• 평균 체중: <strong id="monthlyAvgWeight" class="text-amber-900">- kg</strong></div>
-                <div>• 평균 음수율: <strong id="monthlyAvgWaterRate" class="text-amber-900">-%</strong></div>
-                <div>• 총 감자(소변): <strong id="monthlyTotalPee" class="text-blue-700">0회</strong></div>
-                <div>• 총 맛동산(대변): <strong id="monthlyTotalPoop" class="text-amber-700">0회</strong></div>
-            </div>
-
-            <div class="h-60 relative">
-                <canvas id="monthlyToiletChart"></canvas>
-            </div>
-            <p class="text-[10px] text-slate-400 text-center">* 막대: 일별 배변 횟수 / 꺾은선: 일별 총 음수량 (ml)</p>
-
-            <div class="pt-2 border-t space-y-2">
-                <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    💬 <span id="memoSummaryTitle">2026년 11월</span> 특이사항 및 메모 요약
-                </h3>
-                <div id="monthlyMemoContainer" class="space-y-1.5 max-h-40 overflow-y-auto text-xs"></div>
-            </div>
+            <p class="text-[11px] text-slate-400 text-center">* 막대: 배변 횟수 / 꺾은선: 총 음수량 (ml)</p>
         </section>
+
+        <!-- 숨겨진 월간 리포트 영역 (상단 버튼으로 스마트폰 '사진' 앱에 캡처 저장용) -->
+        <div class="hidden">
+            <section id="monthlyReportSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 w-[400px]">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <h2 class="text-base font-bold text-slate-700">📊 <span id="monthlyCatNameTitle">첫째</span>의 월간 리포트</h2>
+                    <span id="selectedMonthDisplayText" class="text-xs font-extrabold text-amber-600">2026년 11월</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-xs">
+                    <div>• 평균 체중: <strong id="monthlyAvgWeight" class="text-amber-900">- kg</strong></div>
+                    <div>• 평균 음수율: <strong id="monthlyAvgWaterRate" class="text-amber-900">-%</strong></div>
+                    <div>• 총 감자(소변): <strong id="monthlyTotalPee" class="text-blue-700">0회</strong></div>
+                    <div>• 총 맛동산(대변): <strong id="monthlyTotalPoop" class="text-amber-700">0회</strong></div>
+                </div>
+
+                <div class="h-56 relative">
+                    <canvas id="monthlyToiletChart"></canvas>
+                </div>
+                <p class="text-[10px] text-slate-400 text-center">* 일별 배변 횟수 및 총 음수량 (ml) 추이</p>
+
+                <div class="pt-2 border-t space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        💬 <span id="memoSummaryTitle">2026년 11월</span> 특이사항 및 메모 요약
+                    </h3>
+                    <div id="monthlyMemoContainer" class="space-y-1.5 max-h-40 overflow-y-auto text-xs"></div>
+                </div>
+            </section>
+        </div>
 
         <!-- 3. 최근 기록 리스트 -->
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -253,6 +260,7 @@
         window.currentCat = 'cat1';
         window.peeTimes = [];
         window.poopTimes = [];
+        window.weeklyChartInstance = null;
         window.monthlyChartInstance = null;
         window.allCatLogs = { cat1: [], cat2: [] };
         window.catProfiles = {
@@ -267,17 +275,6 @@
             if (confirm("앱을 최신 상태로 새로고침하시겠습니까?")) {
                 window.location.reload(true);
             }
-        };
-
-        window.changeMonth = function(direction) {
-            let [year, month] = window.selectedYearMonth.split('-').map(Number);
-            month += direction;
-            if (month > 12) { month = 1; year++; }
-            else if (month < 1) { month = 12; year--; }
-            window.selectedYearMonth = `${year}-${String(month).padStart(2, '0')}`;
-            document.getElementById('selectedMonthDisplay').innerText = `${year}년 ${month}월`;
-            document.getElementById('memoSummaryTitle').innerText = `${year}년 ${month}월`;
-            renderMonthlyReport();
         };
 
         onSnapshot(doc(db, "catCare", "settings"), (snapshot) => {
@@ -295,7 +292,8 @@
             onSnapshot(doc(db, "catCare", `logs_${catId}`), (snapshot) => {
                 window.allCatLogs[catId] = snapshot.exists() ? (snapshot.data().list || []) : [];
                 if (window.currentCat === catId) {
-                    renderMonthlyReport();
+                    renderWeeklyReport();
+                    renderMonthlyReportData();
                     renderHistoryList();
                     const date = document.getElementById('logDate').value || window.today;
                     loadLogForDate(date);
@@ -315,23 +313,15 @@
             document.getElementById('poopTimesDisplay').innerText = window.poopTimes.length > 0 ? `시간: ${window.poopTimes.join(', ')}` : '시간: 없음';
         }
 
-        // 밥 + 간식 통합 수분량 자동 계산
         window.calculateTotalWater = function() {
             let totalFoodWater = 0;
 
-            // 1. 밥 수분 계산
+            // 1. 밥 수분 계산 (수기 입력 제거됨)
             document.querySelectorAll('#foodContainer .food-row').forEach(row => {
                 const select = row.querySelector('.food-select');
-                const customMoistureInput = row.querySelector('.food-custom-moisture');
                 const amountInput = row.querySelector('.food-amount');
-                
                 if (select && amountInput) {
-                    let moisture = 0;
-                    if (select.value === 'custom') {
-                        moisture = parseFloat(customMoistureInput?.value || 0);
-                    } else {
-                        moisture = parseFloat(select.options[select.selectedIndex]?.dataset?.moisture || 0);
-                    }
+                    const moisture = parseFloat(select.options[select.selectedIndex]?.dataset?.moisture || 0);
                     const amountGrams = parseFloat(amountInput.value) || 0;
                     if (moisture > 0 && amountGrams > 0) {
                         totalFoodWater += (amountGrams * (moisture / 100));
@@ -339,7 +329,7 @@
                 }
             });
 
-            // 2. 간식 수분 계산
+            // 2. 간식 수분 계산 (드롭다운 + 수기입력 지원)
             document.querySelectorAll('#snackContainer .snack-row').forEach(row => {
                 const select = row.querySelector('.snack-select');
                 const customMoistureInput = row.querySelector('.snack-custom-moisture');
@@ -403,12 +393,8 @@
 
             let totalFoodWater = 0;
             foods.forEach(f => {
-                let m = f.customMoisture !== undefined ? parseFloat(f.customMoisture) : 0;
-                if (!m) {
-                    const item = window.foodDb.find(d => d.name === f.type);
-                    if (item) m = item.moisture;
-                }
-                if (m && f.amount) totalFoodWater += (parseFloat(f.amount) * (m / 100));
+                const item = window.foodDb.find(d => d.name === f.type);
+                if (item && f.amount) totalFoodWater += (parseFloat(f.amount) * (item.moisture / 100));
             });
 
             snacks.forEach(s => {
@@ -532,6 +518,7 @@
             document.getElementById('formCatName').innerText = p[window.currentCat]?.name || '첫째';
             document.getElementById('chartCatName').innerText = p[window.currentCat]?.name || '첫째';
             document.getElementById('listCatName').innerText = p[window.currentCat]?.name || '첫째';
+            document.getElementById('monthlyCatNameTitle').innerText = p[window.currentCat]?.name || '첫째';
         };
 
         window.switchCat = function(catId) {
@@ -546,12 +533,13 @@
             updateCatNameUI();
             const date = document.getElementById('logDate').value || window.today;
             loadLogForDate(date);
-            renderMonthlyReport();
+            renderWeeklyReport();
+            renderMonthlyReportData();
             renderHistoryList();
         };
 
-        // 밥 행 추가 (드롭다운 + 수기입력 연동)
-        window.addFoodRow = function(type = '', amount = '', time = '', customMoisture = '') {
+        // 밥 행 추가 (수기 입력 제거됨)
+        window.addFoodRow = function(type = '', amount = '', time = '') {
             const container = document.getElementById('foodContainer');
             const row = document.createElement('div');
             row.className = 'flex gap-1.5 items-center food-row';
@@ -561,34 +549,16 @@
                 const selected = (f.name === type) ? 'selected' : '';
                 options += `<option value="${f.name}" data-moisture="${f.moisture}" ${selected}>${f.name} (${f.moisture}%)</option>`;
             });
-            const customSelected = (type === 'custom') ? 'selected' : '';
-            options += `<option value="custom" ${customSelected}>기타 (직접입력 %)</option>`;
-
-            const isCustom = type === 'custom';
 
             row.innerHTML = `
-                <select onchange="toggleFoodCustomInput(this)" class="food-select ${isCustom ? 'w-4/12' : 'w-5/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <select onchange="calculateTotalWater()" class="food-select w-7/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
                     ${options}
                 </select>
-                <input type="number" oninput="calculateTotalWater()" placeholder="수분%" value="${customMoisture}" class="food-custom-moisture ${isCustom ? '' : 'hidden'} w-2/12 p-2 border rounded-lg bg-amber-50 text-xs font-bold text-amber-900">
-                <input type="number" oninput="calculateTotalWater()" placeholder="급여량(g)" value="${amount}" class="food-amount ${isCustom ? 'w-3/12' : 'w-3/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
-                <input type="text" placeholder="시간" value="${time}" class="food-time ${isCustom ? 'w-2/12' : 'w-3/12'} p-2 border rounded-lg bg-slate-50 text-xs">
+                <input type="number" oninput="calculateTotalWater()" placeholder="급여량(g)" value="${amount}" class="food-amount w-2/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <input type="text" placeholder="시간" value="${time}" class="food-time w-2/12 p-2 border rounded-lg bg-slate-50 text-xs">
                 <button type="button" onclick="this.parentElement.remove(); calculateTotalWater();" class="text-red-400 font-bold px-1 text-sm">✕</button>
             `;
             container.appendChild(row);
-            calculateTotalWater();
-        };
-
-        window.toggleFoodCustomInput = function(selectElem) {
-            const row = selectElem.parentElement;
-            const customInput = row.querySelector('.food-custom-moisture');
-            if (selectElem.value === 'custom') {
-                customInput.classList.remove('hidden');
-                selectElem.className = 'food-select w-4/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold';
-            } else {
-                customInput.classList.add('hidden');
-                selectElem.className = 'food-select w-5/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold';
-            }
             calculateTotalWater();
         };
 
@@ -600,13 +570,11 @@
                     const selected = (f.name === currentVal) ? 'selected' : '';
                     options += `<option value="${f.name}" data-moisture="${f.moisture}" ${selected}>${f.name} (${f.moisture}%)</option>`;
                 });
-                const customSelected = (currentVal === 'custom') ? 'selected' : '';
-                options += `<option value="custom" ${customSelected}>기타 (직접입력 %)</option>`;
                 select.innerHTML = options;
             });
         }
 
-        // 간식 행 추가 (카테고리 드롭다운 + 수기입력 연동)
+        // 간식 행 추가 (카테고리 + 수기입력 지원)
         window.addSnackRow = function(type = '', amount = '', time = '', customMoisture = '') {
             const container = document.getElementById('snackContainer');
             const row = document.createElement('div');
@@ -660,11 +628,10 @@
             rows.forEach(row => {
                 const select = row.querySelector('.food-select');
                 const type = select.value || '';
-                const customMoisture = row.querySelector('.food-custom-moisture')?.value || '';
                 const amount = row.querySelector('.food-amount').value.trim();
                 const time = row.querySelector('.food-time').value.trim();
                 if (type || amount || time) {
-                    data.push({ type, amount, time, customMoisture });
+                    data.push({ type, amount, time });
                 }
             });
             return data;
@@ -701,7 +668,7 @@
 
                 document.getElementById('foodContainer').innerHTML = '';
                 if (log.foods && log.foods.length > 0) {
-                    log.foods.forEach(f => addFoodRow(f.type, f.amount, f.time, f.customMoisture));
+                    log.foods.forEach(f => addFoodRow(f.type, f.amount, f.time));
                 } else {
                     addFoodRow();
                 }
@@ -739,24 +706,73 @@
             calculateTotalWater();
         }
 
+        // 상단 월간 리포트 이미지 생성 후 스마트폰 '사진(앨범)' 저장
         window.exportMonthlyReportToImage = function() {
+            renderMonthlyReportData(); // 최신 데이터 반영
             const section = document.getElementById('monthlyReportSection');
+            section.parentElement.classList.remove('hidden'); // 일시적으로 화면에 렌더링되도록 노출
+            
             const catName = window.catProfiles[window.currentCat]?.name || '고양이';
             
-            alert('월간 리포트 이미지를 생성합니다.');
-            html2canvas(section, { scale: 2 }).then(canvas => {
-                const image = canvas.toDataURL("image/png");
-                const link = document.createElement('a');
-                link.href = image;
-                link.download = `${catName}_${window.selectedYearMonth}_월간리포트.png`;
-                link.click();
-            });
+            setTimeout(() => {
+                html2canvas(section, { scale: 2, backgroundColor: '#ffffff' }).then(canvas => {
+                    section.parentElement.classList.add('hidden'); // 다시 숨김
+                    
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.href = image;
+                    link.download = `${catName}_${window.selectedYearMonth}_월간리포트.png`;
+                    link.click();
+                    alert('월간 리포트가 사진(앨범) 저장용 파일로 다운로드되었습니다!');
+                }).catch(err => {
+                    section.parentElement.classList.add('hidden');
+                    alert('이미지 생성 중 오류가 발생했습니다.');
+                });
+            }, 100);
         };
 
-        function renderMonthlyReport() {
+        // 주간 리포트 (오늘 기록 저장하기 아래 위치)
+        function renderWeeklyReport() {
+            const logs = getCurrentLogs();
+            const recentLogs = logs.slice(-7);
+
+            const dates = recentLogs.map(l => l.date.slice(5));
+            const peeData = recentLogs.map(l => l.pee || 0);
+            const poopData = recentLogs.map(l => l.poop || 0);
+            const waterData = recentLogs.map(l => l.totalWater || l.water || 0);
+
+            if (window.weeklyChartInstance) window.weeklyChartInstance.destroy();
+            const ctx = document.getElementById('toiletChart').getContext('2d');
+            
+            window.weeklyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { type: 'bar', label: '🥔 감자(회)', data: peeData, backgroundColor: '#3b82f6', yAxisID: 'y' },
+                        { type: 'bar', label: '💩 맛동산(회)', data: poopData, backgroundColor: '#f59e0b', yAxisID: 'y' },
+                        { type: 'line', label: '💧 음수량(ml)', data: waterData, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 2, fill: false, tension: 0.2, yAxisID: 'y1' }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { type: 'linear', display: true, position: 'left', beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: '횟수' } },
+                        y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'ml' } }
+                    }
+                }
+            });
+        }
+
+        // 월간 리포트 데이터 생성 및 렌더링
+        function renderMonthlyReportData() {
             const logs = getCurrentLogs();
             const [sYear, sMonth] = window.selectedYearMonth.split('-').map(Number);
             
+            document.getElementById('selectedMonthDisplayText').innerText = `${sYear}년 ${sMonth}월`;
+            document.getElementById('memoSummaryTitle').innerText = `${sYear}년 ${sMonth}월`;
+
             const monthLogs = logs.filter(l => {
                 const [lYear, lMonth] = l.date.split('-').map(Number);
                 return lYear === sYear && lMonth === sMonth;
@@ -867,7 +883,7 @@
                 const item = document.createElement('div');
                 item.className = 'p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 relative';
                 
-                let foodHtml = log.foods?.map(f => `• ${f.type === 'custom' ? '기타('+f.customMoisture+'%)' : f.type} ${f.amount ? f.amount+'g' : ''} ${f.time ? '('+f.time+')' : ''}`).join('<br>') || '-';
+                let foodHtml = log.foods?.map(f => `• ${f.type} ${f.amount ? f.amount+'g' : ''} ${f.time ? '('+f.time+')' : ''}`).join('<br>') || '-';
                 let snackHtml = log.snacks?.map(s => `• ${s.type === 'custom' ? '기타('+s.customMoisture+'%)' : s.type} ${s.amount ? s.amount+'g' : ''} ${s.time ? '('+s.time+')' : ''}`).join('<br>') || '-';
 
                 const peeTimeTxt = log.peeTimes && log.peeTimes.length > 0 ? `(${log.peeTimes.join(', ')})` : '';
