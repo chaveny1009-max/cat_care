@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>환묘 데일리 케어 노트 (실시간 공유용)</title>
+    <title>환묘 데일리 케어 노트</title>
     
     <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="apple-touch-icon" href="./favicon.png">
@@ -12,7 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2canvas (화면 이미지 캡처/저장용) -->
+    <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 pb-12">
@@ -94,7 +94,7 @@
                 </div>
                 
                 <div class="w-full h-4 bg-cyan-100 rounded-full overflow-hidden p-0.5 shadow-inner relative">
-                    <div id="waterProgressBar" class="h-full rounded-full transition-all duration-500 bg-rose-400 w-0"></div>
+                    <div id="waterProgressBar" class="h-full rounded-full transition-all duration-300 bg-rose-400 w-0"></div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 text-[11px] text-cyan-800 pt-1">
@@ -183,7 +183,6 @@
                 <button type="button" onclick="closeFoodModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
             </div>
             
-            <!-- 1. 신규 사료 등록 -->
             <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <span class="text-xs font-bold text-slate-700 block">➕ 새 사료 등록 / 수정</span>
                 <input type="text" id="newFoodName" placeholder="사료명 (예: 로얄캐닌 파우치)" class="w-full p-2 border rounded-lg bg-white text-xs">
@@ -193,7 +192,6 @@
                 </div>
             </div>
 
-            <!-- 2. 저장된 사료 목록 -->
             <div class="space-y-2 pt-1 border-t">
                 <label class="text-xs font-bold text-slate-700 block">📋 저장된 사료 목록</label>
                 <select id="foodDbDropdown" class="w-full p-2 border rounded-lg bg-slate-50 text-xs font-semibold"></select>
@@ -208,7 +206,7 @@
         </div>
     </div>
 
-    <!-- 스크립트 영역 -->
+    <!-- 스크립트 영역 (최적화 버전) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -225,7 +223,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 로얄캐닌 인스팅티브 파우치로 명칭 수정
         const defaultFoodDb = [
             { name: "로얄캐닌 인스팅티브 파우치", moisture: 79 },
             { name: "건식사료 (일반)", moisture: 10 }
@@ -249,7 +246,7 @@
             }
         };
 
-        // 데이터 수신
+        // 데이터 수신 (settings)
         onSnapshot(doc(db, "catCare", "settings"), (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
@@ -261,6 +258,7 @@
             renderFoodSelectOptions();
         });
 
+        // 각 고양이 로그 독립 수신
         ['cat1', 'cat2'].forEach(catId => {
             onSnapshot(doc(db, "catCare", `logs_${catId}`), (snapshot) => {
                 window.allCatLogs[catId] = snapshot.exists() ? (snapshot.data().list || []) : [];
@@ -317,10 +315,10 @@
             const bar = document.getElementById('waterProgressBar');
             bar.style.width = `${pct}%`;
 
-            if (rawPct < 50) bar.className = 'h-full rounded-full transition-all duration-500 bg-rose-400';
-            else if (rawPct < 85) bar.className = 'h-full rounded-full transition-all duration-500 bg-amber-400';
-            else if (rawPct <= 100) bar.className = 'h-full rounded-full transition-all duration-500 bg-emerald-500';
-            else bar.className = 'h-full rounded-full transition-all duration-500 bg-cyan-500 shadow-sm animate-pulse';
+            if (rawPct < 50) bar.className = 'h-full rounded-full transition-all duration-300 bg-rose-400';
+            else if (rawPct < 85) bar.className = 'h-full rounded-full transition-all duration-300 bg-amber-400';
+            else if (rawPct <= 100) bar.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
+            else bar.className = 'h-full rounded-full transition-all duration-300 bg-cyan-500 shadow-sm animate-pulse';
         };
 
         window.changeVal = function(type, val) {
@@ -591,9 +589,8 @@
             calculateTotalWater();
         };
 
-        function resetForm(targetDate = window.today) {
+        function resetForm(targetDate = document.getElementById('logDate')?.value || window.today) {
             document.getElementById('logDate').value = targetDate;
-            document.getElementById('currentDateDisplay').innerText = targetDate;
             window.peeTimes = [];
             window.poopTimes = [];
             updateToiletDisplay();
@@ -614,8 +611,7 @@
             const section = document.getElementById('weeklyReportSection');
             const catName = window.catProfiles[window.currentCat]?.name || '고양이';
             
-            alert('주간 리포트 이미지를 생성합니다. 잠시만 기다려주세요!');
-
+            alert('주간 리포트 이미지를 생성합니다.');
             html2canvas(section, { scale: 2 }).then(canvas => {
                 const image = canvas.toDataURL("image/png");
                 const link = document.createElement('a');
@@ -695,6 +691,8 @@
             });
         }
 
+        // 초기 시작
+        document.getElementById('logDate').value = window.today;
         window.switchCat('cat1');
     </script>
 </body>
