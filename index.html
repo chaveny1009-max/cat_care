@@ -86,9 +86,8 @@
                 </div>
             </div>
 
-            <!-- 음수량 & 칼로리 달성도 게이지 카드 (통합 위치) -->
+            <!-- 음수량 & 칼로리 달성도 게이지 카드 -->
             <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
-                <!-- 💧 음수량 게이지 -->
                 <div class="space-y-1">
                     <div class="flex justify-between items-center text-xs font-bold text-cyan-900">
                         <span>💧 오늘 음수 달성도</span>
@@ -99,7 +98,6 @@
                     </div>
                 </div>
 
-                <!-- 🔥 칼로리 게이지 (신규 반영) -->
                 <div class="space-y-1">
                     <div class="flex justify-between items-center text-xs font-bold text-amber-900">
                         <span>🔥 오늘 섭취 칼로리</span>
@@ -110,7 +108,6 @@
                     </div>
                 </div>
 
-                <!-- 요약 정보 수치 -->
                 <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-700 pt-1">
                     <div class="bg-white p-1.5 rounded-lg border border-slate-200 text-center">
                         음식 수분: <strong id="foodWaterCalcText" class="text-cyan-800">0ml</strong>
@@ -182,25 +179,37 @@
             <p class="text-[11px] text-slate-400 text-center">* 막대: 배변 횟수 / 꺾은선: 총 음수량 (ml)</p>
         </section>
 
-        <!-- 숨겨진 월간 리포트 영역 (사진 저장용) -->
+        <!-- 숨겨진 월간 리포트 영역 (사진 저장용 - 2개 그래프 분리 적용) -->
         <div class="hidden">
-            <section id="monthlyReportSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 w-[400px]">
+            <section id="monthlyReportSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 w-[420px]">
                 <div class="flex justify-between items-center border-b pb-3">
                     <h2 class="text-base font-bold text-slate-700">📊 <span id="monthlyCatNameTitle">첫째</span>의 월간 리포트</h2>
                     <span id="selectedMonthDisplayText" class="text-xs font-extrabold text-amber-600">2026년 11월</span>
                 </div>
 
+                <!-- 월간 요약 카드 (칼로리 포함) -->
                 <div class="grid grid-cols-2 gap-2 bg-amber-50/60 p-3 rounded-xl border border-amber-100 text-xs">
                     <div>• 평균 체중: <strong id="monthlyAvgWeight" class="text-amber-900">- kg</strong></div>
                     <div>• 평균 음수율: <strong id="monthlyAvgWaterRate" class="text-amber-900">-%</strong></div>
-                    <div>• 총 감자(소변): <strong id="monthlyTotalPee" class="text-blue-700">0회</strong></div>
-                    <div>• 총 맛동산(대변): <strong id="monthlyTotalPoop" class="text-amber-700">0회</strong></div>
+                    <div>• 월 평균 섭취열량: <strong id="monthlyAvgCalorie" class="text-amber-800">- kcal</strong></div>
+                    <div>• 총 감자/맛동산: <strong id="monthlyTotalToilet" class="text-blue-700">0 / 0회</strong></div>
                 </div>
 
-                <div class="h-56 relative">
-                    <canvas id="monthlyToiletChart"></canvas>
+                <!-- 1번 그래프: 대소변 (감자 & 맛동산) -->
+                <div class="space-y-1">
+                    <span class="text-[11px] font-bold text-slate-600">🥔 똥/오줌 배변 횟수 추이</span>
+                    <div class="h-40 relative">
+                        <canvas id="monthlyToiletChart"></canvas>
+                    </div>
                 </div>
-                <p class="text-[10px] text-slate-400 text-center">* 일별 배변 횟수 및 총 음수량 (ml) 추이</p>
+
+                <!-- 2번 그래프: 음수량 및 칼로리 -->
+                <div class="space-y-1 pt-2 border-t">
+                    <span class="text-[11px] font-bold text-slate-600">💧 음수량(ml) & 칼로리(kcal) 추이</span>
+                    <div class="h-40 relative">
+                        <canvas id="monthlyWaterCalorieChart"></canvas>
+                    </div>
+                </div>
 
                 <div class="pt-2 border-t space-y-2">
                     <h3 class="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -269,7 +278,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 공식 성분표 기반 기본 사료 DB (수분%, 1g당 kcal)
         const defaultFoodDb = [
             { name: "로얄캐닌 인스팅티브 파우치", moisture: 79, calorie: 0.88 },
             { name: "건식사료 (일반)", moisture: 10, calorie: 3.80 }
@@ -279,7 +287,8 @@
         window.peeTimes = [];
         window.poopTimes = [];
         window.weeklyChartInstance = null;
-        window.monthlyChartInstance = null;
+        window.monthlyToiletChartInstance = null;
+        window.monthlyWaterCalorieChartInstance = null;
         window.allCatLogs = { cat1: [], cat2: [] };
         window.catProfiles = {
             cat1: { name: '첫째', weight: 4.0 },
@@ -331,12 +340,10 @@
             document.getElementById('poopTimesDisplay').innerText = window.poopTimes.length > 0 ? `시간: ${window.poopTimes.join(', ')}` : '시간: 없음';
         }
 
-        // 음수량 및 칼로리 동시 통합 자동 계산
         window.calculateTotals = function() {
             let totalFoodWater = 0;
             let totalFoodCalorie = 0;
 
-            // 1. 밥 수분/칼로리
             document.querySelectorAll('#foodContainer .food-row').forEach(row => {
                 const select = row.querySelector('.food-select');
                 const amountInput = row.querySelector('.food-amount');
@@ -352,7 +359,6 @@
                 }
             });
 
-            // 2. 간식 수분/칼로리
             document.querySelectorAll('#snackContainer .snack-row').forEach(row => {
                 const select = row.querySelector('.snack-select');
                 const customMoistureInput = row.querySelector('.snack-custom-moisture');
@@ -386,7 +392,6 @@
             const profile = window.catProfiles[window.currentCat] || { weight: 4.0 };
             const weight = parseFloat(profile.weight) || 4.0;
             
-            // 수의학 목표치 (음수: 체중 * 50ml, 칼로리: MER 1.2 * 70 * weight^0.75)
             const targetWater = Math.round(weight * 50);
             const targetCalorie = Math.round(1.2 * 70 * Math.pow(weight, 0.75));
 
@@ -402,7 +407,6 @@
             document.getElementById('waterGoalText').innerText = `${totalWater} / ${targetWater} ml (${rawWaterPct}%)`;
             document.getElementById('calorieGoalText').innerText = `${totalCalorie} / ${targetCalorie} kcal (${rawCaloriePct}%)`;
 
-            // 바 업데이트
             const waterBar = document.getElementById('waterProgressBar');
             waterBar.style.width = `${waterPct}%`;
             if (rawWaterPct < 50) waterBar.className = 'h-full rounded-full transition-all duration-300 bg-rose-400';
@@ -629,7 +633,6 @@
             });
         }
 
-        // 간식 행 추가 (공식 성분 기준 1g당 kcal 연동)
         window.addSnackRow = function(type = '', amount = '', time = '', customMoisture = '', customCalorie = '') {
             const container = document.getElementById('snackContainer');
             const row = document.createElement('div');
@@ -843,6 +846,7 @@
             });
         }
 
+        // 월간 리포트 데이터 생성 및 2개 그래프(대소변 / 음수량·칼로리) 분리 렌더링
         function renderMonthlyReportData() {
             const logs = getCurrentLogs();
             const [sYear, sMonth] = window.selectedYearMonth.split('-').map(Number);
@@ -861,6 +865,8 @@
             let weightCount = 0;
             let waterRateSum = 0;
             let rateCount = 0;
+            let calorieSum = 0;
+            let calorieCount = 0;
 
             const profile = window.catProfiles[window.currentCat] || { weight: 4.0 };
             const baseWeight = parseFloat(profile.weight) || 4.0;
@@ -870,6 +876,7 @@
             const peeData = [];
             const poopData = [];
             const waterData = [];
+            const calorieData = [];
             const memoList = [];
 
             const lastDay = new Date(sYear, sMonth, 0).getDate();
@@ -882,12 +889,14 @@
                     const p = found.pee || 0;
                     const po = found.poop || 0;
                     const w = found.totalWater || found.water || 0;
+                    const c = found.totalCalorie || 0;
 
                     totalPee += p;
                     totalPoop += po;
                     peeData.push(p);
                     poopData.push(po);
                     waterData.push(w);
+                    calorieData.push(c);
 
                     if (found.weight && !isNaN(found.weight)) {
                         weightSum += parseFloat(found.weight);
@@ -897,6 +906,10 @@
                         waterRateSum += Math.round((w / targetWater) * 100);
                         rateCount++;
                     }
+                    if (c > 0) {
+                        calorieSum += c;
+                        calorieCount++;
+                    }
                     if (found.memo && found.memo.trim() !== '') {
                         memoList.push({ date: found.date.slice(5), memo: found.memo });
                     }
@@ -904,16 +917,18 @@
                     peeData.push(0);
                     poopData.push(0);
                     waterData.push(0);
+                    calorieData.push(0);
                 }
             }
 
             const avgWeight = weightCount > 0 ? (weightSum / weightCount).toFixed(2) : baseWeight.toFixed(2);
             const avgWaterRate = rateCount > 0 ? Math.round(waterRateSum / rateCount) : 0;
+            const avgCalorie = calorieCount > 0 ? Math.round(calorieSum / calorieCount) : 0;
 
             document.getElementById('monthlyAvgWeight').innerText = `${avgWeight} kg`;
             document.getElementById('monthlyAvgWaterRate').innerText = `${avgWaterRate}%`;
-            document.getElementById('monthlyTotalPee').innerText = `${totalPee}회`;
-            document.getElementById('monthlyTotalPoop').innerText = `${totalPoop}회`;
+            document.getElementById('monthlyAvgCalorie').innerText = `${avgCalorie} kcal`;
+            document.getElementById('monthlyTotalToilet').innerText = `${totalPee} / ${totalPoop}회`;
 
             const memoContainer = document.getElementById('monthlyMemoContainer');
             memoContainer.innerHTML = '';
@@ -928,24 +943,44 @@
                 memoContainer.innerHTML = '<div class="text-slate-400 text-center py-2">작성된 특이사항 메모가 없습니다.</div>';
             }
 
-            if (window.monthlyChartInstance) window.monthlyChartInstance.destroy();
-            const ctx = document.getElementById('monthlyToiletChart').getContext('2d');
-            
-            window.monthlyChartInstance = new Chart(ctx, {
+            // 1번 그래프: 대소변 (감자 & 맛동산)
+            if (window.monthlyToiletChartInstance) window.monthlyToiletChartInstance.destroy();
+            const ctxToilet = document.getElementById('monthlyToiletChart').getContext('2d');
+            window.monthlyToiletChartInstance = new Chart(ctxToilet, {
                 type: 'bar',
                 data: {
                     labels: dates,
                     datasets: [
-                        { type: 'bar', label: '🥔 감자', data: peeData, backgroundColor: '#3b82f6', yAxisID: 'y' },
-                        { type: 'bar', label: '💩 맛동산', data: poopData, backgroundColor: '#f59e0b', yAxisID: 'y' },
-                        { type: 'line', label: '💧 음수(ml)', data: waterData, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 1.5, fill: false, tension: 0.2, yAxisID: 'y1' }
+                        { label: '🥔 감자(회)', data: peeData, backgroundColor: '#3b82f6' },
+                        { label: '💩 맛동산(회)', data: poopData, backgroundColor: '#f59e0b' }
                     ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: false,
                     scales: { 
-                        y: { type: 'linear', display: true, position: 'left', beginAtZero: true, ticks: { stepSize: 1 }, title: { display: false } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: false } }
+                    }
+                }
+            });
+
+            // 2번 그래프: 음수량 및 칼로리 (수직 분리 배치)
+            if (window.monthlyWaterCalorieChartInstance) window.monthlyWaterCalorieChartInstance.destroy();
+            const ctxWaterCal = document.getElementById('monthlyWaterCalorieChart').getContext('2d');
+            window.monthlyWaterCalorieChartInstance = new Chart(ctxWaterCal, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: '💧 음수(ml)', data: waterData, borderColor: '#06b6d4', backgroundColor: '#06b6d4', borderWidth: 1.5, fill: false, tension: 0.2, yAxisID: 'y' },
+                        { label: '🔥 열량(kcal)', data: calorieData, borderColor: '#f97316', backgroundColor: '#f97316', borderWidth: 1.5, fill: false, tension: 0.2, yAxisID: 'y1' }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { type: 'linear', display: true, position: 'left', beginAtZero: true, title: { display: false } },
                         y1: { type: 'linear', display: true, position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: false } }
                     }
                 }
