@@ -43,7 +43,7 @@
                 </button>
             </div>
             <div class="mt-2 flex justify-between items-center px-1">
-                <button type="button" onclick="openFoodModal()" class="text-[11px] text-amber-600 hover:text-amber-700 font-semibold underline">🥫 습식사료 수분DB 관리</button>
+                <button type="button" onclick="openFoodModal()" class="text-[11px] text-amber-600 hover:text-amber-700 font-semibold underline">🥫 습식사료 수분/칼로리DB 관리</button>
                 <button type="button" onclick="editCatProfile()" class="text-[11px] text-slate-500 hover:text-slate-700 underline">⚙️ 고양이 프로필/이름 설정</button>
             </div>
         </section>
@@ -86,45 +86,59 @@
                 </div>
             </div>
 
-            <!-- 음수량 게이지 카운터 & 음수량 입력 카드 -->
-            <div class="bg-cyan-50/70 p-4 rounded-2xl border border-cyan-100 space-y-3">
-                <div class="flex justify-between items-center text-xs font-bold text-cyan-900">
-                    <span>💧 오늘 음수 달성도</span>
-                    <span id="waterGoalText">0 / 200 ml (0%)</span>
-                </div>
-                
-                <div class="w-full h-4 bg-cyan-100 rounded-full overflow-hidden p-0.5 shadow-inner relative">
-                    <div id="waterProgressBar" class="h-full rounded-full transition-all duration-300 bg-rose-400 w-0"></div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2 text-[11px] text-cyan-800 pt-1">
-                    <div class="bg-white/80 p-1.5 rounded-lg border border-cyan-100 text-center">
-                        음식(밥+간식) 수분: <strong id="foodWaterCalcText" class="text-cyan-900">0ml</strong>
+            <!-- 음수량 & 칼로리 달성도 게이지 카드 (통합 위치) -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                <!-- 💧 음수량 게이지 -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs font-bold text-cyan-900">
+                        <span>💧 오늘 음수 달성도</span>
+                        <span id="waterGoalText">0 / 200 ml (0%)</span>
                     </div>
-                    <div class="bg-white/80 p-1.5 rounded-lg border border-cyan-100 text-center">
-                        직접/수액: <strong id="directWaterText" class="text-cyan-900">0ml</strong>
+                    <div class="w-full h-3.5 bg-cyan-100 rounded-full overflow-hidden p-0.5 shadow-inner">
+                        <div id="waterProgressBar" class="h-full rounded-full transition-all duration-300 bg-rose-400 w-0"></div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-1 border-t border-cyan-100/60">
+                <!-- 🔥 칼로리 게이지 (신규 반영) -->
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center text-xs font-bold text-amber-900">
+                        <span>🔥 오늘 섭취 칼로리</span>
+                        <span id="calorieGoalText">0 / 200 kcal (0%)</span>
+                    </div>
+                    <div class="w-full h-3.5 bg-amber-100 rounded-full overflow-hidden p-0.5 shadow-inner">
+                        <div id="calorieProgressBar" class="h-full rounded-full transition-all duration-300 bg-amber-500 w-0"></div>
+                    </div>
+                </div>
+
+                <!-- 요약 정보 수치 -->
+                <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-700 pt-1">
+                    <div class="bg-white p-1.5 rounded-lg border border-slate-200 text-center">
+                        음식 수분: <strong id="foodWaterCalcText" class="text-cyan-800">0ml</strong>
+                    </div>
+                    <div class="bg-white p-1.5 rounded-lg border border-slate-200 text-center">
+                        음식 칼로리: <strong id="foodCalorieCalcText" class="text-amber-800">0kcal</strong>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-1 border-t border-slate-200">
                     <label class="text-xs font-bold text-cyan-900">💧 직접 마신 물 / 수액 (ml)</label>
-                    <input type="number" id="waterIntake" oninput="calculateTotalWater()" step="5" placeholder="예: 120" class="w-1/2 p-2 border rounded-xl bg-white text-sm font-bold text-right focus:outline-cyan-500">
+                    <input type="number" id="waterIntake" oninput="calculateTotals()" step="5" placeholder="예: 120" class="w-1/2 p-2 border rounded-xl bg-white text-sm font-bold text-right focus:outline-cyan-500">
                 </div>
             </div>
 
             <!-- 밥 (식사) -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
-                    <label class="text-sm font-bold text-slate-700">🥣 밥 (식사 수분 자동계산)</label>
+                    <label class="text-sm font-bold text-slate-700">🥣 밥 (수분/칼로리 자동계산)</label>
                     <button type="button" onclick="addFoodRow()" class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-lg font-bold">+ 항목 추가</button>
                 </div>
                 <div id="foodContainer" class="space-y-2"></div>
             </div>
 
-            <!-- 간식 (마구로쥬레 최상단 추가) -->
+            <!-- 간식 -->
             <div class="space-y-2">
                 <div class="flex justify-between items-center">
-                    <label class="text-sm font-bold text-slate-700">🐟 간식 (수분 자동계산 연동)</label>
+                    <label class="text-sm font-bold text-slate-700">🐟 간식 (수분/칼로리 자동계산)</label>
                     <button type="button" onclick="addSnackRow()" class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-lg font-bold">+ 항목 추가</button>
                 </div>
                 <div id="snackContainer" class="space-y-2"></div>
@@ -168,7 +182,7 @@
             <p class="text-[11px] text-slate-400 text-center">* 막대: 배변 횟수 / 꺾은선: 총 음수량 (ml)</p>
         </section>
 
-        <!-- 숨겨진 월간 리포트 영역 (사진 앨범 저장용 캡처 타겟) -->
+        <!-- 숨겨진 월간 리포트 영역 (사진 저장용) -->
         <div class="hidden">
             <section id="monthlyReportSection" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 w-[400px]">
                 <div class="flex justify-between items-center border-b pb-3">
@@ -204,11 +218,11 @@
         </section>
     </div>
 
-    <!-- 습식사료 수분DB 관리 모달 -->
+    <!-- 습식사료 수분/칼로리 DB 관리 모달 -->
     <div id="foodModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4">
             <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-amber-600 text-base">🥫 습식사료 수분DB 관리</h3>
+                <h3 class="font-bold text-amber-600 text-base">🥫 습식사료 DB (수분/칼로리)</h3>
                 <button type="button" onclick="closeFoodModal()" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
             </div>
             
@@ -216,9 +230,12 @@
                 <span class="text-xs font-bold text-slate-700 block">➕ 새 사료 등록 / 수정</span>
                 <input type="text" id="newFoodName" placeholder="사료명 (예: 로얄캐닌 파우치)" class="w-full p-2 border rounded-lg bg-white text-xs">
                 <div class="flex gap-2">
-                    <input type="number" id="newFoodMoisture" placeholder="수분 함량 (%)" class="w-2/3 p-2 border rounded-lg bg-white text-xs">
-                    <button type="button" onclick="saveFoodDbItem()" class="w-1/3 bg-amber-500 text-white font-bold rounded-lg text-xs hover:bg-amber-600">등록</button>
+                    <input type="number" id="newFoodMoisture" placeholder="수분 (%)" class="w-1/2 p-2 border rounded-lg bg-white text-xs">
+                    <input type="number" step="0.01" id="newFoodCalorie" placeholder="칼로리 (kcal/g)" class="w-1/2 p-2 border rounded-lg bg-white text-xs">
                 </div>
+                <button type="button" onclick="saveFoodDbItem()" class="w-full bg-amber-500 text-white font-bold py-1.5 rounded-lg text-xs hover:bg-amber-600 transition-colors">
+                    사료 DB 저장하기
+                </button>
             </div>
 
             <div class="space-y-2 pt-1 border-t">
@@ -252,9 +269,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 공식 성분표 기반 기본 사료 DB (수분%, 1g당 kcal)
         const defaultFoodDb = [
-            { name: "로얄캐닌 인스팅티브 파우치", moisture: 79 },
-            { name: "건식사료 (일반)", moisture: 10 }
+            { name: "로얄캐닌 인스팅티브 파우치", moisture: 79, calorie: 0.88 },
+            { name: "건식사료 (일반)", moisture: 10, calorie: 3.80 }
         ];
 
         window.currentCat = 'cat1';
@@ -284,7 +302,7 @@
                 if (data.foodDb && data.foodDb.length > 0) window.foodDb = data.foodDb;
             }
             updateCatNameUI();
-            calculateTotalWater();
+            calculateTotals();
             renderFoodSelectOptions();
         });
 
@@ -313,61 +331,87 @@
             document.getElementById('poopTimesDisplay').innerText = window.poopTimes.length > 0 ? `시간: ${window.poopTimes.join(', ')}` : '시간: 없음';
         }
 
-        window.calculateTotalWater = function() {
+        // 음수량 및 칼로리 동시 통합 자동 계산
+        window.calculateTotals = function() {
             let totalFoodWater = 0;
+            let totalFoodCalorie = 0;
 
+            // 1. 밥 수분/칼로리
             document.querySelectorAll('#foodContainer .food-row').forEach(row => {
                 const select = row.querySelector('.food-select');
                 const amountInput = row.querySelector('.food-amount');
                 if (select && amountInput) {
                     const moisture = parseFloat(select.options[select.selectedIndex]?.dataset?.moisture || 0);
+                    const caloriePerG = parseFloat(select.options[select.selectedIndex]?.dataset?.calorie || 0);
                     const amountGrams = parseFloat(amountInput.value) || 0;
-                    if (moisture > 0 && amountGrams > 0) {
-                        totalFoodWater += (amountGrams * (moisture / 100));
+                    
+                    if (amountGrams > 0) {
+                        if (moisture > 0) totalFoodWater += (amountGrams * (moisture / 100));
+                        if (caloriePerG > 0) totalFoodCalorie += (amountGrams * caloriePerG);
                     }
                 }
             });
 
+            // 2. 간식 수분/칼로리
             document.querySelectorAll('#snackContainer .snack-row').forEach(row => {
                 const select = row.querySelector('.snack-select');
                 const customMoistureInput = row.querySelector('.snack-custom-moisture');
+                const customCalorieInput = row.querySelector('.snack-custom-calorie');
                 const amountInput = row.querySelector('.snack-amount');
                 
                 if (select && amountInput) {
                     let moisture = 0;
+                    let caloriePerG = 0;
+
                     if (select.value === 'custom') {
                         moisture = parseFloat(customMoistureInput?.value || 0);
+                        caloriePerG = parseFloat(customCalorieInput?.value || 0);
                     } else {
                         moisture = parseFloat(select.options[select.selectedIndex]?.dataset?.moisture || 0);
+                        caloriePerG = parseFloat(select.options[select.selectedIndex]?.dataset?.calorie || 0);
                     }
+                    
                     const amountGrams = parseFloat(amountInput.value) || 0;
-                    if (moisture > 0 && amountGrams > 0) {
-                        totalFoodWater += (amountGrams * (moisture / 100));
+                    if (amountGrams > 0) {
+                        if (moisture > 0) totalFoodWater += (amountGrams * (moisture / 100));
+                        if (caloriePerG > 0) totalFoodCalorie += (amountGrams * caloriePerG);
                     }
                 }
             });
 
             const directWater = parseFloat(document.getElementById('waterIntake').value) || 0;
             const totalWater = Math.round(totalFoodWater + directWater);
+            const totalCalorie = Math.round(totalFoodCalorie);
 
             const profile = window.catProfiles[window.currentCat] || { weight: 4.0 };
             const weight = parseFloat(profile.weight) || 4.0;
+            
+            // 수의학 목표치 (음수: 체중 * 50ml, 칼로리: MER 1.2 * 70 * weight^0.75)
             const targetWater = Math.round(weight * 50);
+            const targetCalorie = Math.round(1.2 * 70 * Math.pow(weight, 0.75));
 
-            const pct = Math.min(Math.round((totalWater / targetWater) * 100), 100);
-            const rawPct = targetWater > 0 ? Math.round((totalWater / targetWater) * 100) : 0;
+            const waterPct = Math.min(Math.round((totalWater / targetWater) * 100), 100);
+            const rawWaterPct = targetWater > 0 ? Math.round((totalWater / targetWater) * 100) : 0;
+
+            const caloriePct = Math.min(Math.round((totalCalorie / targetCalorie) * 100), 100);
+            const rawCaloriePct = targetCalorie > 0 ? Math.round((totalCalorie / targetCalorie) * 100) : 0;
 
             document.getElementById('foodWaterCalcText').innerText = `${Math.round(totalFoodWater)}ml`;
-            document.getElementById('directWaterText').innerText = `${Math.round(directWater)}ml`;
-            document.getElementById('waterGoalText').innerText = `${totalWater} / ${targetWater} ml (${rawPct}%)`;
+            document.getElementById('foodCalorieCalcText').innerText = `${totalCalorie}kcal`;
+            
+            document.getElementById('waterGoalText').innerText = `${totalWater} / ${targetWater} ml (${rawWaterPct}%)`;
+            document.getElementById('calorieGoalText').innerText = `${totalCalorie} / ${targetCalorie} kcal (${rawCaloriePct}%)`;
 
-            const bar = document.getElementById('waterProgressBar');
-            bar.style.width = `${pct}%`;
+            // 바 업데이트
+            const waterBar = document.getElementById('waterProgressBar');
+            waterBar.style.width = `${waterPct}%`;
+            if (rawWaterPct < 50) waterBar.className = 'h-full rounded-full transition-all duration-300 bg-rose-400';
+            else if (rawWaterPct < 85) waterBar.className = 'h-full rounded-full transition-all duration-300 bg-amber-400';
+            else if (rawWaterPct <= 100) waterBar.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
+            else waterBar.className = 'h-full rounded-full transition-all duration-300 bg-cyan-500 shadow-sm animate-pulse';
 
-            if (rawPct < 50) bar.className = 'h-full rounded-full transition-all duration-300 bg-rose-400';
-            else if (rawPct < 85) bar.className = 'h-full rounded-full transition-all duration-300 bg-amber-400';
-            else if (rawPct <= 100) bar.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
-            else bar.className = 'h-full rounded-full transition-all duration-300 bg-cyan-500 shadow-sm animate-pulse';
+            const calBar = document.getElementById('calorieProgressBar');
+            calBar.style.width = `${caloriePct}%`;
         };
 
         window.changeVal = function(type, val) {
@@ -390,18 +434,28 @@
             const snacks = getDynamicSnackData();
 
             let totalFoodWater = 0;
+            let totalFoodCalorie = 0;
+
             foods.forEach(f => {
                 const item = window.foodDb.find(d => d.name === f.type);
-                if (item && f.amount) totalFoodWater += (parseFloat(f.amount) * (item.moisture / 100));
+                if (item && f.amount) {
+                    totalFoodWater += (parseFloat(f.amount) * (item.moisture / 100));
+                    totalFoodCalorie += (parseFloat(f.amount) * (item.calorie || 0));
+                }
             });
 
             snacks.forEach(s => {
-                let m = s.customMoisture !== undefined ? parseFloat(s.customMoisture) : parseFloat(s.moisture || 0);
-                if (m && s.amount) totalFoodWater += (parseFloat(s.amount) * (m / 100));
+                let m = s.customMoisture !== undefined && s.customMoisture !== '' ? parseFloat(s.customMoisture) : parseFloat(s.moisture || 0);
+                let c = s.customCalorie !== undefined && s.customCalorie !== '' ? parseFloat(s.customCalorie) : parseFloat(s.calorie || 0);
+                if (s.amount) {
+                    if (m) totalFoodWater += (parseFloat(s.amount) * (m / 100));
+                    if (c) totalFoodCalorie += (parseFloat(s.amount) * c);
+                }
             });
 
             const directWater = parseFloat(document.getElementById('waterIntake').value) || 0;
             const calculatedTotalWater = Math.round(totalFoodWater + directWater);
+            const calculatedTotalCalorie = Math.round(totalFoodCalorie);
 
             const entry = {
                 date,
@@ -411,6 +465,7 @@
                 poopTimes: [...window.poopTimes],
                 water: directWater,
                 totalWater: calculatedTotalWater,
+                totalCalorie: calculatedTotalCalorie,
                 foods,
                 snacks,
                 supplements: document.getElementById('supplements').value,
@@ -447,7 +502,7 @@
             };
 
             updateCatNameUI();
-            calculateTotalWater();
+            calculateTotals();
             await setDoc(doc(db, "catCare", "settings"), { profiles: window.catProfiles }, { merge: true });
         };
 
@@ -463,6 +518,7 @@
         window.saveFoodDbItem = async function() {
             const name = document.getElementById('newFoodName').value.trim();
             const moisture = parseFloat(document.getElementById('newFoodMoisture').value);
+            const calorie = parseFloat(document.getElementById('newFoodCalorie').value) || 0;
 
             if (!name) { alert('사료 이름을 입력해주세요.'); return; }
             if (isNaN(moisture) || moisture < 0 || moisture > 100) { alert('유효한 수분 함량(0~100%)을 입력해주세요.'); return; }
@@ -470,17 +526,19 @@
             const existingIdx = window.foodDb.findIndex(f => f.name === name);
             if (existingIdx >= 0) {
                 window.foodDb[existingIdx].moisture = moisture;
+                window.foodDb[existingIdx].calorie = calorie;
             } else {
-                window.foodDb.push({ name, moisture });
+                window.foodDb.push({ name, moisture, calorie });
             }
 
             document.getElementById('newFoodName').value = '';
             document.getElementById('newFoodMoisture').value = '';
+            document.getElementById('newFoodCalorie').value = '';
 
             await setDoc(doc(db, "catCare", "settings"), { foodDb: window.foodDb }, { merge: true });
             renderFoodModalDropdown();
             renderFoodSelectOptions();
-            alert(`'${name}' (${moisture}%) 사료가 저장되었습니다.`);
+            alert(`'${name}' (수분 ${moisture}%, ${calorie}kcal/g) 사료가 저장되었습니다.`);
         };
 
         window.deleteSelectedFoodDbItem = async function() {
@@ -500,7 +558,7 @@
             const dropdown = document.getElementById('foodDbDropdown');
             let options = '';
             window.foodDb.forEach(f => {
-                options += `<option value="${f.name}">${f.name} (수분 ${f.moisture}%)</option>`;
+                options += `<option value="${f.name}">${f.name} (${f.moisture}%, ${f.calorie || 0}kcal/g)</option>`;
             });
             dropdown.innerHTML = options || `<option value="">등록된 사료가 없습니다</option>`;
         }
@@ -541,83 +599,87 @@
             const row = document.createElement('div');
             row.className = 'flex gap-1.5 items-center food-row';
             
-            let options = `<option value="" data-moisture="0">사료 선택 (수분%)</option>`;
+            let options = `<option value="" data-moisture="0" data-calorie="0">사료 선택 (수분% / kcal)</option>`;
             window.foodDb.forEach(f => {
                 const selected = (f.name === type) ? 'selected' : '';
-                options += `<option value="${f.name}" data-moisture="${f.moisture}" ${selected}>${f.name} (${f.moisture}%)</option>`;
+                options += `<option value="${f.name}" data-moisture="${f.moisture}" data-calorie="${f.calorie || 0}" ${selected}>${f.name} (${f.moisture}%)</option>`;
             });
 
             row.innerHTML = `
-                <select onchange="calculateTotalWater()" class="food-select w-7/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <select onchange="calculateTotals()" class="food-select w-7/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
                     ${options}
                 </select>
-                <input type="number" oninput="calculateTotalWater()" placeholder="급여량(g)" value="${amount}" class="food-amount w-2/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <input type="number" oninput="calculateTotals()" placeholder="급여량(g)" value="${amount}" class="food-amount w-2/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
                 <input type="text" placeholder="시간" value="${time}" class="food-time w-2/12 p-2 border rounded-lg bg-slate-50 text-xs">
-                <button type="button" onclick="this.parentElement.remove(); calculateTotalWater();" class="text-red-400 font-bold px-1 text-sm">✕</button>
+                <button type="button" onclick="this.parentElement.remove(); calculateTotals();" class="text-red-400 font-bold px-1 text-sm">✕</button>
             `;
             container.appendChild(row);
-            calculateTotalWater();
+            calculateTotals();
         };
 
         function renderFoodSelectOptions() {
             document.querySelectorAll('#foodContainer .food-select').forEach(select => {
                 const currentVal = select.value;
-                let options = `<option value="" data-moisture="0">사료 선택 (수분%)</option>`;
+                let options = `<option value="" data-moisture="0" data-calorie="0">사료 선택 (수분% / kcal)</option>`;
                 window.foodDb.forEach(f => {
                     const selected = (f.name === currentVal) ? 'selected' : '';
-                    options += `<option value="${f.name}" data-moisture="${f.moisture}" ${selected}>${f.name} (${f.moisture}%)</option>`;
+                    options += `<option value="${f.name}" data-moisture="${f.moisture}" data-calorie="${f.calorie || 0}" ${selected}>${f.name} (${f.moisture}%)</option>`;
                 });
                 select.innerHTML = options;
             });
         }
 
-        // 간식 행 추가 (마구로쥬레 최상단 배치)
-        window.addSnackRow = function(type = '', amount = '', time = '', customMoisture = '') {
+        // 간식 행 추가 (공식 성분 기준 1g당 kcal 연동)
+        window.addSnackRow = function(type = '', amount = '', time = '', customMoisture = '', customCalorie = '') {
             const container = document.getElementById('snackContainer');
             const row = document.createElement('div');
             row.className = 'flex gap-1.5 items-center snack-row';
 
             const snackPresets = [
-                { id: 'maguro', label: '이나바 마구로쥬레', moisture: 90 },
-                { id: 'churu', label: '액체형(츄르/스틱)', moisture: 85 },
-                { id: 'tongsal', label: '통살/촉촉(보니또/츄르비)', moisture: 70 },
-                { id: 'dry', label: '건조트릿/건식', moisture: 0 }
+                { id: 'maguro', label: '이나바 마구로쥬레', moisture: 90, calorie: 0.54 },
+                { id: 'churu', label: '액체형(츄르/스틱)', moisture: 85, calorie: 0.47 },
+                { id: 'tongsal', label: '통살/촉촉(보니또/츄르비)', moisture: 70, calorie: 1.10 },
+                { id: 'dry', label: '건조트릿/건식', moisture: 0, calorie: 3.50 }
             ];
 
-            let options = `<option value="" data-moisture="0">간식 유형 선택</option>`;
+            let options = `<option value="" data-moisture="0" data-calorie="0">간식 유형 선택</option>`;
             snackPresets.forEach(p => {
                 const selected = (type === p.id || type === p.label) ? 'selected' : '';
-                options += `<option value="${p.id}" data-moisture="${p.moisture}" ${selected}>${p.label} (${p.moisture}%)</option>`;
+                options += `<option value="${p.id}" data-moisture="${p.moisture}" data-calorie="${p.calorie}" ${selected}>${p.label} (${p.moisture}%)</option>`;
             });
             const customSelected = (type === 'custom') ? 'selected' : '';
-            options += `<option value="custom" ${customSelected}>기타 (직접입력 %)</option>`;
+            options += `<option value="custom" ${customSelected}>기타 (직접입력)</option>`;
 
             const isCustom = type === 'custom';
 
             row.innerHTML = `
-                <select onchange="toggleSnackCustomInput(this)" class="snack-select ${isCustom ? 'w-4/12' : 'w-5/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <select onchange="toggleSnackCustomInput(this)" class="snack-select ${isCustom ? 'w-3/12' : 'w-5/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
                     ${options}
                 </select>
-                <input type="number" oninput="calculateTotalWater()" placeholder="수분%" value="${customMoisture}" class="snack-custom-moisture ${isCustom ? '' : 'hidden'} w-2/12 p-2 border rounded-lg bg-amber-50 text-xs font-bold text-amber-900">
-                <input type="number" oninput="calculateTotalWater()" placeholder="급여량(g)" value="${amount}" class="snack-amount ${isCustom ? 'w-3/12' : 'w-3/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
+                <input type="number" oninput="calculateTotals()" placeholder="수분%" value="${customMoisture}" class="snack-custom-moisture ${isCustom ? '' : 'hidden'} w-2/12 p-2 border rounded-lg bg-amber-50 text-xs font-bold text-amber-900">
+                <input type="number" step="0.01" oninput="calculateTotals()" placeholder="kcal/g" value="${customCalorie}" class="snack-custom-calorie ${isCustom ? '' : 'hidden'} w-2/12 p-2 border rounded-lg bg-amber-50 text-xs font-bold text-amber-900">
+                <input type="number" oninput="calculateTotals()" placeholder="급여량(g)" value="${amount}" class="snack-amount ${isCustom ? 'w-2/12' : 'w-3/12'} p-2 border rounded-lg bg-slate-50 text-xs font-semibold">
                 <input type="text" placeholder="시간" value="${time}" class="snack-time ${isCustom ? 'w-2/12' : 'w-3/12'} p-2 border rounded-lg bg-slate-50 text-xs">
-                <button type="button" onclick="this.parentElement.remove(); calculateTotalWater();" class="text-red-400 font-bold px-1 text-sm">✕</button>
+                <button type="button" onclick="this.parentElement.remove(); calculateTotals();" class="text-red-400 font-bold px-1 text-sm">✕</button>
             `;
             container.appendChild(row);
-            calculateTotalWater();
+            calculateTotals();
         };
 
         window.toggleSnackCustomInput = function(selectElem) {
             const row = selectElem.parentElement;
-            const customInput = row.querySelector('.snack-custom-moisture');
+            const customMoisture = row.querySelector('.snack-custom-moisture');
+            const customCalorie = row.querySelector('.snack-custom-calorie');
             if (selectElem.value === 'custom') {
-                customInput.classList.remove('hidden');
-                selectElem.className = 'snack-select w-4/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold';
+                customMoisture.classList.remove('hidden');
+                customCalorie.classList.remove('hidden');
+                selectElem.className = 'snack-select w-3/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold';
             } else {
-                customInput.classList.add('hidden');
+                customMoisture.classList.add('hidden');
+                customCalorie.classList.add('hidden');
                 selectElem.className = 'snack-select w-5/12 p-2 border rounded-lg bg-slate-50 text-xs font-semibold';
             }
-            calculateTotalWater();
+            calculateTotals();
         };
 
         function getDynamicFoodData() {
@@ -642,11 +704,13 @@
                 const select = row.querySelector('.snack-select');
                 const type = select.value || '';
                 const customMoisture = row.querySelector('.snack-custom-moisture')?.value || '';
+                const customCalorie = row.querySelector('.snack-custom-calorie')?.value || '';
                 const moisture = select.options[select.selectedIndex]?.dataset?.moisture || 0;
+                const calorie = select.options[select.selectedIndex]?.dataset?.calorie || 0;
                 const amount = row.querySelector('.snack-amount').value.trim();
                 const time = row.querySelector('.snack-time').value.trim();
                 if (type || amount || time) {
-                    data.push({ type, amount, time, moisture, customMoisture });
+                    data.push({ type, amount, time, moisture, calorie, customMoisture, customCalorie });
                 }
             });
             return data;
@@ -673,7 +737,7 @@
 
                 document.getElementById('snackContainer').innerHTML = '';
                 if (log.snacks && log.snacks.length > 0) {
-                    log.snacks.forEach(s => addSnackRow(s.type, s.amount, s.time, s.customMoisture));
+                    log.snacks.forEach(s => addSnackRow(s.type, s.amount, s.time, s.customMoisture, s.customCalorie));
                 } else {
                     addSnackRow();
                 }
@@ -683,7 +747,7 @@
                 document.getElementById('vitality').value = log.vitality || '';
                 document.getElementById('memo').value = log.memo || '';
             }
-            calculateTotalWater();
+            calculateTotals();
         };
 
         function resetForm(targetDate = document.getElementById('logDate')?.value || window.today) {
@@ -701,10 +765,9 @@
             document.getElementById('memo').value = '';
             addFoodRow();
             addSnackRow();
-            calculateTotalWater();
+            calculateTotals();
         }
 
-        // 월간 리포트 이미지 생성 후 스마트폰 '사진(앨범)' 공유/저장 지원
         window.exportMonthlyReportToImage = async function() {
             renderMonthlyReportData();
             const section = document.getElementById('monthlyReportSection');
@@ -721,7 +784,6 @@
                     canvas.toBlob(async (blob) => {
                         const file = new File([blob], fileName, { type: 'image/png' });
                         
-                        // 모바일 브라우저 공유하기 API 지원 시 '사진에 저장' 및 공유 시트 호출
                         if (navigator.canShare && navigator.canShare({ files: [file] })) {
                             try {
                                 await navigator.share({
@@ -735,7 +797,6 @@
                             }
                         }
                         
-                        // 일반 다운로드 백업
                         const link = document.createElement('a');
                         link.href = URL.createObjectURL(blob);
                         link.download = fileName;
@@ -900,7 +961,7 @@
                 item.className = 'p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 relative';
                 
                 let foodHtml = log.foods?.map(f => `• ${f.type} ${f.amount ? f.amount+'g' : ''} ${f.time ? '('+f.time+')' : ''}`).join('<br>') || '-';
-                let snackHtml = log.snacks?.map(s => `• ${s.type === 'custom' ? '기타('+s.customMoisture+'%)' : s.type} ${s.amount ? s.amount+'g' : ''} ${s.time ? '('+s.time+')' : ''}`).join('<br>') || '-';
+                let snackHtml = log.snacks?.map(s => `• ${s.type === 'custom' ? '기타' : s.type} ${s.amount ? s.amount+'g' : ''} ${s.time ? '('+s.time+')' : ''}`).join('<br>') || '-';
 
                 const peeTimeTxt = log.peeTimes && log.peeTimes.length > 0 ? `(${log.peeTimes.join(', ')})` : '';
                 const poopTimeTxt = log.poopTimes && log.poopTimes.length > 0 ? `(${log.poopTimes.join(', ')})` : '';
@@ -922,8 +983,8 @@
                     ${log.supplements ? `<div class="text-xs text-slate-600"><strong>💊 약/영양제:</strong> ${log.supplements}</div>` : ''}
                     <div class="flex justify-between text-xs text-slate-500 pt-1 border-t">
                         <span>💧 총음수: ${log.totalWater ? log.totalWater + 'ml' : (log.water ? log.water + 'ml' : '-')}</span>
+                        <span>🔥 총열량: ${log.totalCalorie ? log.totalCalorie + 'kcal' : '-'}</span>
                         <span>⚖️ 체중: ${log.weight ? log.weight + 'kg' : '-'}</span>
-                        <span>✨ 활력: ${log.vitality || '-'}</span>
                     </div>
                     ${log.memo ? `<div class="text-xs text-slate-600 bg-white p-2 rounded border mt-1">💬 ${log.memo}</div>` : ''}
                 `;
