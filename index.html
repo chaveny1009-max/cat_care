@@ -150,7 +150,7 @@
                 <input type="text" id="supplements" placeholder="예: 시스테이드 (9:30), 츄르약" class="w-full p-2 border rounded-xl bg-slate-50 text-sm">
             </div>
 
-            <!-- 특이사항 메모 (체중/활력상태 통합 관리) -->
+            <!-- 특이사항 메모 -->
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">💬 특이사항 메모 (활력, 건강상태 및 체중 변화)</label>
                 <textarea id="memo" rows="3" placeholder="예: 활력 양호, 체중 4.15kg, 새벽에 화장실 들락날락함" class="w-full p-2 border rounded-xl bg-slate-50 text-sm"></textarea>
@@ -161,7 +161,7 @@
             </button>
         </section>
 
-        <!-- 2. 주간 리포트 영역 (감자/맛동산 횟수 타이틀 적용) -->
+        <!-- 2. 주실 리포트 영역 -->
         <section id="weeklyReportSection" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <h2 class="text-lg font-bold text-slate-700">📊 <span id="chartCatName">첫째</span>의 최근 7일 종합 리포트</h2>
             
@@ -229,7 +229,7 @@
         </section>
     </div>
 
-    <!-- 1. 사료 DB 관리 모달 -->
+    <!-- 사료 DB 관리 모달 -->
     <div id="foodModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4">
             <div class="flex justify-between items-center border-b pb-2">
@@ -263,7 +263,7 @@
         </div>
     </div>
 
-    <!-- 2. 간식 DB 관리 모달 (신규 추가) -->
+    <!-- 간식 DB 관리 모달 -->
     <div id="snackModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5 space-y-4">
             <div class="flex justify-between items-center border-b pb-2">
@@ -376,10 +376,20 @@
         ['cat1', 'cat2'].forEach(catId => {
             onSnapshot(doc(db, "catCare", `logs_${catId}`), (snapshot) => {
                 if (snapshot.exists()) {
-                    let logs = snapshot.data().list || [];
-                    // 날짜 순서 정렬 보장으로 과거 데이터 누락 방지
-                    logs.sort((a, b) => new Date(a.date) - new Date(b.date));
-                    window.allCatLogs[catId] = logs;
+                    let rawData = snapshot.data();
+                    let logs = [];
+                    // 데이터 포맷 무결성 방어 (array 혹은 list 구조 모두 수용)
+                    if (Array.isArray(rawData)) {
+                        logs = rawData;
+                    } else if (rawData.list && Array.isArray(rawData.list)) {
+                        logs = rawData.list;
+                    }
+                    
+                    // 날짜 고유값 기준 병합 및 오름차순 정렬
+                    const uniqueLogs = Array.from(new Map(logs.map(item => [item.date, item])).values());
+                    uniqueLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    window.allCatLogs[catId] = uniqueLogs;
+                    console.log(`[${catId}] 데이터 로드 성공:`, uniqueLogs.length, '개');
                 } else {
                     window.allCatLogs[catId] = [];
                 }
@@ -388,8 +398,10 @@
                     renderWeeklyReport();
                     renderMonthlyReportData();
                     renderHistoryList();
-                    const date = document.getElementById('logDate').value || window.today;
-                    loadLogForDate(date);
+                    const dateInputVal = document.getElementById('logDate').value;
+                    if (!dateInputVal || dateInputVal === window.today) {
+                        loadLogForDate(window.today);
+                    }
                 }
             });
         });
@@ -549,8 +561,6 @@
                 foods,
                 snacks,
                 supplements: document.getElementById('supplements').value,
-                weight: document.getElementById('weight').value, // 메모에 통합됨에 따라 하위 호환 유지
-                vitality: document.getElementById('vitality').value,
                 memo: document.getElementById('memo').value
             };
 
@@ -559,7 +569,8 @@
             logs.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             await setDoc(doc(db, "catCare", `logs_${window.currentCat}`), { list: logs });
-            alert(`${window.catProfiles[window.currentCat].name}의 기록이 저장되었습니다!`);
+            alert(`${window.catProfiles[window.currentCat].name}의 ${date} 기록이 성공적으로 저장되었습니다!`);
+            loadLogForDate(date);
         };
 
         window.deleteLog = async function(targetDate) {
@@ -586,7 +597,6 @@
             await setDoc(doc(db, "catCare", "settings"), { profiles: window.catProfiles }, { merge: true });
         };
 
-        // 사료 DB 모달
         window.openFoodModal = function() {
             renderFoodModalDropdown();
             document.getElementById('foodModal').classList.remove('hidden');
@@ -639,7 +649,6 @@
             dropdown.innerHTML = options || `<option value="">등록된 사료가 없습니다</option>`;
         }
 
-        // 간식 DB 모달 (신규 추가)
         window.openSnackModal = function() {
             renderSnackModalDropdown();
             document.getElementById('snackModal').classList.remove('hidden');
@@ -765,7 +774,7 @@
 
             let options = `<option value="" data-moisture="0" data-calorie="0">간식 선택</option>`;
             window.snackDb.forEach(s => {
-                const selected = (s.name === type || s.name === type) ? 'selected' : '';
+                const selected = (s.name === type) ? 'selected' : '';
                 options += `<option value="${s.name}" data-moisture="${s.moisture}" data-calorie="${s.calorie || 0}" ${selected}>${s.name} (${s.moisture}%)</option>`;
             });
             const customSelected = (type === 'custom') ? 'selected' : '';
@@ -803,7 +812,7 @@
             calculateTotals();
         };
 
-        function renderSnackSelectOptions() {
+        window.renderSnackSelectOptions = function() {
             document.querySelectorAll('#snackContainer .snack-select').forEach(select => {
                 const currentVal = select.value;
                 let options = `<option value="" data-moisture="0" data-calorie="0">간식 선택</option>`;
@@ -1044,7 +1053,6 @@
                     waterData.push(w);
                     calorieData.push(c);
 
-                    // 체중 추출 (별도 필드 또는 메모에서 파싱 시도)
                     let wVal = parseFloat(found.weight);
                     if (isNaN(wVal) && found.memo) {
                         const match = found.memo.match(/체중\s*[:]?\s*([0-9.]+)\s*kg/i);
@@ -1177,8 +1185,8 @@
             });
         }
 
-        // 초기 시작
-        document.getElementById('logDate').value = window.today;
+        const dateInput = document.getElementById('logDate');
+        dateInput.value = window.today;
         window.switchCat('cat1');
     </script>
 </body>
