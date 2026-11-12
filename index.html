@@ -258,7 +258,7 @@
     <!-- 스크립트 영역 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, query, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDPyDgOG6OsfTusf9AAiBv4r9Xjj1PPcEI",
@@ -279,7 +279,7 @@
 
         const defaultSnackDb = [
             { name: "이나바 마구로쥬레", moisture: 90, calorie: 0.54 },
-            { name: "액체형(츄르/스틱)", moisture: 85, calorie: 0.47 },
+            { name: "액체형(츄르/ส틱)", moisture: 85, calorie: 0.47 },
             { name: "통살/촉촉(보니또/츄르비)", moisture: 70, calorie: 1.10 },
             { name: "건조트릿/건식", moisture: 0, calorie: 3.50 }
         ];
@@ -330,31 +330,48 @@
             renderSnackSelectOptions();
         });
 
-        // 날짜별 분할 문서(Daily Partition) 실시간 리스너 연결
+        // 🛡️ [데이터 무결성 호환 리스너] : 
+        // 1. 새로운 날짜별 분할 문서(catCareEntries)와 
+        // 2. 기존 통째 문서(logs_cat1, logs_cat2)를 동시에 모두 읽어서 병합합니다!
         ['cat1', 'cat2'].forEach(catId => {
-            const colRef = collection(db, "catCareEntries");
-            // Firestore 실시간 쿼리로 해당 고양이의 모든 일지 문서 수신
-            onSnapshot(query(colRef), (snapshot) => {
-                let logs = [];
+            // A. 새로운 분할 문서 리스너
+            onSnapshot(query(collection(db, "catCareEntries")), (snapshot) => {
+                let partitionedLogs = [];
                 snapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     if (data.catId === catId) {
-                        logs.push(data);
+                        partitionedLogs.push(data);
                     }
                 });
-                // 날짜 오름차순 정렬
-                logs.sort((a, b) => new Date(a.date) - new Date(b.date));
-                window.allCatLogs[catId] = logs;
 
-                if (window.currentCat === catId) {
-                    renderWeeklyReport();
-                    renderMonthlyReportData();
-                    renderHistoryList();
-                    const dateInputVal = document.getElementById('logDate').value;
-                    if (!dateInputVal || dateInputVal === window.today) {
-                        loadLogForDate(window.today);
+                // B. 기존 통째 문서 리스너 (이삭이 기존 데이터 보호!)
+                onSnapshot(doc(db, "catCare", `logs_${catId}`), (legacySnap) => {
+                    let legacyLogs = [];
+                    if (legacySnap.exists()) {
+                        const rawData = legacySnap.data();
+                        if (Array.isArray(rawData)) legacyLogs = rawData;
+                        else if (rawData.list && Array.isArray(rawData.list)) legacyLogs = rawData.list;
                     }
-                }
+
+                    // 두 저장소의 데이터를 날짜(date) 기준으로 중복 없이 완벽 병합
+                    const mergedMap = new Map();
+                    legacyLogs.forEach(item => { if (item.date) mergedMap.set(item.date, item); });
+                    partitionedLogs.forEach(item => { if (item.date) mergedMap.set(item.date, item); });
+
+                    let finalLogs = Array.from(mergedMap.values());
+                    finalLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    window.allCatLogs[catId] = finalLogs;
+
+                    if (window.currentCat === catId) {
+                        renderWeeklyReport();
+                        renderMonthlyReportData();
+                        renderHistoryList();
+                        const dateInputVal = document.getElementById('logDate').value;
+                        if (!dateInputVal || dateInputVal === window.today) {
+                            loadLogForDate(window.today);
+                        }
+                    }
+                });
             });
         });
 
@@ -503,7 +520,6 @@
                 updatedAt: new Date().toISOString()
             };
 
-            // 문서 ID를 'cat1_2026-11-12' 형태로 고유 분할하여 저장하므로 다른 날짜/고양이에 영향 없음
             const docId = `${window.currentCat}_${date}`;
             await setDoc(doc(db, "catCareEntries", docId), entry);
             alert(`${window.catProfiles[window.currentCat].name}의 ${date} 기록이 안전하게 저장되었습니다!`);
